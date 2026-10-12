@@ -1,0 +1,1102 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Control de Inventario</title>
+<meta name="theme-color" content="#101828">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+:root{
+  --bg:#f4f6f9;--panel:#fff;--text:#172033;--muted:#667085;--line:#dfe5ec;
+  --primary:#2457d6;--nav:#101828;--ok:#157347;--warn:#956300;--bad:#b42318;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,sans-serif}
+button,input,select{font:inherit}
+button{cursor:pointer}
+.app{min-height:100vh;display:grid;grid-template-columns:245px minmax(0,1fr)}
+.sidebar{background:var(--nav);color:#fff;padding:22px 16px;display:flex;flex-direction:column;gap:24px}
+.brand{font-size:18px;font-weight:850}.brand small{display:block;margin-top:4px;color:#98a2b3;font-size:12px;font-weight:500}
+nav{display:grid;gap:7px}
+.nav-btn{border:0;border-radius:9px;padding:12px;background:transparent;color:#d0d5dd;text-align:left;font-weight:750}
+.nav-btn:hover,.nav-btn.active{background:#ffffff18;color:#fff}
+.sidebar footer{margin-top:auto;color:#98a2b3;font-size:12px;line-height:1.5}
+.main{padding:26px;min-width:0}
+.topbar{display:flex;justify-content:space-between;gap:20px;margin-bottom:22px}
+.topbar h1{margin:0 0 5px;font-size:26px}.topbar p{margin:0;color:var(--muted)}
+.view{display:none}.view.active{display:block}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:15px;padding:20px;margin-bottom:18px;box-shadow:0 8px 24px #1018280d}
+.panel h2{margin:0 0 5px;font-size:17px}.panel p{margin:0 0 16px;color:var(--muted)}
+.cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:18px}
+.card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px}
+.card span{display:block;color:var(--muted);font-size:13px;margin-bottom:8px}.card b{font-size:24px}
+.wallet-cards{grid-template-columns:repeat(3,minmax(0,1fr))}
+.grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;align-items:end}
+.span2{grid-column:span 2}
+label{display:grid;gap:6px;color:#344054;font-size:13px;font-weight:700}
+input,select{width:100%;padding:10px 11px;border:1px solid #cfd7e3;border-radius:9px;background:#fff;color:var(--text)}
+input:focus,select:focus{outline:0;border-color:var(--primary);box-shadow:0 0 0 3px #2457d622}
+input[readonly]{background:#f2f4f7}
+.actions{display:flex;gap:8px;align-items:end}
+.btn{border:0;border-radius:9px;padding:10px 14px;font-weight:800}
+.btn.primary{background:var(--primary);color:#fff}.btn.secondary{background:#eef2f7;color:#344054}.btn.danger{background:#fdecec;color:var(--bad)}
+.hidden{display:none!important}
+.head{display:flex;justify-content:space-between;align-items:center;gap:14px;margin-bottom:14px}
+.filters{display:flex;gap:9px}.search{min-width:230px}
+.table-wrap{overflow:auto;border:1px solid var(--line);border-radius:11px}
+table{width:100%;border-collapse:collapse;min-width:900px}
+th,td{padding:11px 12px;border-bottom:1px solid #edf0f3;text-align:left;white-space:nowrap;font-size:13px}
+th{background:#f8fafc;color:#475467;text-transform:uppercase;font-size:11px;letter-spacing:.03em}
+.note{white-space:normal;max-width:230px}
+.badge{display:inline-block;padding:4px 8px;border-radius:999px;font-size:11px;font-weight:800}
+.badge.ok{background:#eaf8ef;color:var(--ok)}.badge.warn{background:#fff4d6;color:var(--warn)}.badge.bad{background:#fdecec;color:var(--bad)}
+.empty{text-align:center;color:var(--muted);padding:25px}
+.negative{color:var(--bad);font-weight:850}
+.edit-banner{background:#fff7d6;border:1px solid #efd470;border-radius:9px;padding:10px 12px;margin-bottom:14px;font-size:13px;font-weight:750}
+.order-number{display:inline-flex;align-items:center;justify-content:center;min-width:34px;height:30px;border-radius:8px;background:#f2f4f7;font-weight:850}
+.reorder-actions{display:inline-flex;gap:4px;margin-left:7px;vertical-align:middle}
+.reorder-btn{border:1px solid #d0d5dd;background:#fff;color:#344054;border-radius:7px;width:29px;height:29px;padding:0;font-weight:900;line-height:1}
+.reorder-btn:hover{background:#eef2f7}.reorder-btn:disabled{opacity:.3;cursor:not-allowed}
+.product-row{cursor:grab}.product-row.dragging{opacity:.45}.product-row.drag-over{outline:2px solid var(--primary);outline-offset:-2px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.stack{display:grid;gap:10px}
+.alert-bad{background:#fdecec;border-color:#f3a6a0;color:var(--bad)}
+.toast{position:fixed;right:22px;bottom:22px;background:#101828;color:#fff;padding:12px 15px;border-radius:10px;opacity:0;transform:translateY(10px);transition:.2s;pointer-events:none;max-width:380px}
+.toast.show{opacity:1;transform:none}.toast.err{background:var(--bad)}
+@media(max-width:1100px){.grid,.cards{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:780px){
+  .sidebar{position:sticky;top:0;z-index:5;padding:10px 12px;gap:8px}.brand small,.sidebar footer{display:none}nav{display:flex!important;overflow-x:auto;gap:6px}.nav-btn{white-space:nowrap;padding:9px 12px}.topbar>div:last-child{text-align:left!important}
+  .app{grid-template-columns:1fr}.sidebar{position:static}.main{padding:16px}
+  .grid,.cards,.wallet-cards,.two{grid-template-columns:1fr}.span2{grid-column:span 1}
+  .head,.topbar,.filters{align-items:stretch;flex-direction:column}.search{min-width:0}
+  nav{grid-template-columns:1fr 1fr}
+}
+</style>
+</head>
+<body>
+<div class="app">
+<aside class="sidebar">
+  <div class="brand">CONTROL DE INVENTARIO<small>Tu negocio al día</small></div>
+  <nav>
+    <button class="nav-btn active" data-view="resumen">Resumen</button>
+    <button class="nav-btn" data-view="inventario">Inventario</button>
+    <button class="nav-btn" data-view="compras">Compras</button>
+    <button class="nav-btn" data-view="ventas">Ventas</button>
+    <button class="nav-btn" data-view="lotes">Lotes</button>
+    <button class="nav-btn" data-view="billetera">Billetera</button>
+    <button class="nav-btn" data-view="cierre">Cierre mensual</button>
+    <button class="nav-btn" data-view="datos">Copias y datos</button>
+  </nav>
+  <footer>Estado: <b id="saveStatus">Cargando…</b></footer>
+</aside>
+
+<main class="main">
+<div id="alertBar" class="edit-banner hidden"></div>
+<header class="topbar">
+  <div><h1 id="pageTitle">Resumen</h1><p id="pageSubtitle">Situación general del negocio.</p></div>
+  <div style="text-align:right"><b id="todayLabel"></b></div>
+</header>
+
+<section id="view-resumen" class="view active">
+  <div class="cards">
+    <div class="card"><span>Productos</span><b id="mProducts">0</b></div>
+    <div class="card"><span>Unidades en stock</span><b id="mStock">0</b></div>
+    <div class="card"><span>Valor del stock</span><b id="mStockValue">0,00</b></div>
+    <div class="card"><span>Ganancia del mes (suma de monedas)</span><b id="mMonthProfit">0,00</b></div>
+  </div>
+  <div class="two">
+    <div class="panel"><h2>Stock bajo</h2><p>Productos en el mínimo o por debajo.</p><div id="lowStock" class="empty">Sin avisos.</div></div>
+    <div class="panel"><h2>Últimos movimientos</h2><p>Compras, ventas y billetera.</p><div id="recentMovements" class="empty">Sin movimientos.</div></div>
+  </div>
+  <div class="two">
+    <div class="panel"><h2>Por cobrar</h2><p>Ventas fiadas pendientes.</p><div id="receivables" class="empty">Nada pendiente.</div></div>
+    <div class="panel"><h2>Reposición y rotación</h2><p>Según tus ventas de los últimos 30 días.</p><div id="insights" class="empty">Todo en orden.</div></div>
+  </div>
+</section>
+
+<section id="view-inventario" class="view">
+  <div class="panel">
+    <h2>Registrar producto</h2><p>El código debe ser único.</p>
+    <form id="productForm" class="grid">
+      <input id="productEditId" type="hidden">
+      <label>Código<input id="productCode" maxlength="30" required placeholder="A1"></label>
+      <label class="span2">Producto<input id="productName" maxlength="120" required placeholder="Arroz"></label>
+      <label>Marca<input id="productBrand" maxlength="60" placeholder="Opcional"></label>
+      <label>Stock inicial<input id="productInitial" type="number" min="0" step=".01" value="0" required></label>
+      <label>Stock mínimo<input id="productMin" type="number" min="0" step=".01" value="0" required></label>
+      <div class="actions"><button class="btn primary">Guardar producto</button><button id="cancelProductEdit" type="button" class="btn secondary hidden">Cancelar</button></div>
+    </form>
+  </div>
+  <div class="panel">
+    <div class="head"><div><h2>Inventario general</h2><p>Arrastra una fila o usa ↑ ↓ para cambiar su posición. La numeración se reajusta automáticamente y nunca se duplica.</p></div><input id="inventorySearch" class="search" placeholder="Buscar código o producto"></div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>N.º lista</th><th>Código</th><th>Producto</th><th>Marca</th><th>Inicial</th><th>Entradas</th><th>Salidas</th><th>Stock</th><th>Mínimo</th><th>Valor</th><th>Estado</th><th>Acciones</th></tr></thead>
+      <tbody id="inventoryBody"></tbody>
+    </table></div>
+  </div>
+</section>
+
+<section id="view-compras" class="view">
+  <div class="panel">
+    <h2 id="purchaseFormTitle">Nueva compra</h2><p>Escribe el código o selecciónalo con el autocompletado.</p>
+    <div id="purchaseEditBanner" class="edit-banner hidden">Editando una compra existente.</div>
+    <form id="purchaseForm" class="grid">
+      <input id="purchaseEditId" type="hidden">
+      <label>Código<input id="purchaseCode" list="productCodeList" maxlength="30" required placeholder="Escribe o selecciona"><datalist id="productCodeList"></datalist></label>
+      <label>Subcódigo / lote<input id="purchaseSubcode" maxlength="50" required placeholder="A1-001"></label>
+      <label>Fecha<input id="purchaseDate" type="date" required></label>
+      <label>Moneda<select id="purchaseCurrency" required><option>CUP CASH</option><option>USD CASH</option><option>TRANSFERENCIA</option></select></label>
+      <label class="span2">Producto<input id="purchaseProduct" readonly></label>
+      <label>Marca<input id="purchaseBrand" maxlength="60" placeholder="La del producto"></label>
+      <label>Cantidad<input id="purchaseQuantity" type="number" min=".01" step=".01" required></label>
+      <label>Precio unitario<input id="purchaseUnitCost" type="number" min=".01" step=".01" required></label>
+      <label>Total<input id="purchaseTotal" readonly></label>
+      <label class="span2">Nota<input id="purchaseNote" maxlength="250" placeholder="Opcional"></label>
+      <div class="actions"><button id="purchaseSubmit" class="btn primary">Registrar compra</button><button id="cancelPurchaseEdit" type="button" class="btn secondary hidden">Cancelar</button></div>
+    </form>
+  </div>
+  <div class="panel">
+    <div class="head"><div><h2>Historial de compras</h2><p>Puedes editar o eliminar.</p></div><div class="filters"><input id="purchaseSearch" class="search" placeholder="Buscar"><input id="purchaseMonth" type="month"></div></div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Fecha</th><th>Código</th><th>Lote</th><th>Producto</th><th>Marca</th><th>Moneda</th><th>Cantidad</th><th>Coste unit.</th><th>Total</th><th>Nota</th><th>Acciones</th></tr></thead>
+      <tbody id="purchaseBody"></tbody>
+    </table></div>
+  </div>
+</section>
+
+<section id="view-ventas" class="view">
+  <div class="panel">
+    <h2 id="saleFormTitle">Nueva venta</h2><p>Escribe el código manualmente o selecciónalo con la ayuda de autocompletado, igual que en Compras.</p>
+    <div id="saleEditBanner" class="edit-banner hidden">Editando una venta existente.</div>
+    <form id="saleForm" class="grid">
+      <input id="saleEditId" type="hidden">
+      <label>Código<input id="saleCode" list="productCodeList" maxlength="30" required placeholder="Escribe o selecciona"></label>
+      <label>Subcódigo / lote<select id="saleSubcode" required></select></label>
+      <label>Fecha<input id="saleDate" type="date" required></label>
+      <label>Moneda<select id="saleCurrency" required><option>CUP CASH</option><option>USD CASH</option><option>TRANSFERENCIA</option></select></label>
+      <label class="span2">Producto<input id="saleProduct" readonly></label>
+      <label>Marca<input id="saleBrand" readonly></label>
+      <label>Stock disponible<input id="saleAvailable" readonly></label>
+      <label>Cantidad<input id="saleQuantity" type="number" min=".01" step=".01" required></label>
+      <label>Precio de venta unitario<input id="saleUnitPrice" type="number" min=".01" step=".01" required></label>
+      <label>Coste unitario<input id="saleUnitCost" type="number" min="0" step=".01" required></label>
+      <label>Total venta<input id="saleTotal" readonly></label>
+      <label>Coste total<input id="saleCostTotal" readonly></label>
+      <label>Ganancia<input id="saleProfit" readonly></label>
+      <label>% ganancia<input id="saleProfitPercent" readonly></label>
+      <label>Cliente<input id="saleCustomer" maxlength="80" placeholder="Opcional"></label>
+      <label>Cobro<select id="salePaid"><option value="1">Cobrada</option><option value="0">Pendiente (fiado)</option></select></label>
+      <label class="span2">Nota<input id="saleNote" maxlength="250" placeholder="Opcional"></label>
+      <div class="actions"><button id="saleSubmit" class="btn primary">Registrar venta</button><button id="cancelSaleEdit" type="button" class="btn secondary hidden">Cancelar</button></div>
+    </form>
+  </div>
+  <div class="panel">
+    <div class="head"><div><h2>Historial de ventas</h2><p>% ganancia = ganancia ÷ coste total × 100.</p></div><div class="filters"><input id="saleSearch" class="search" placeholder="Buscar"><input id="saleMonth" type="month"></div></div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Fecha</th><th>Código</th><th>Lote</th><th>Producto</th><th>Marca</th><th>Moneda</th><th>Cantidad</th><th>Precio</th><th>Total</th><th>Coste</th><th>Ganancia</th><th>% ganancia</th><th>Cliente</th><th>Cobro</th><th>Nota</th><th>Acciones</th></tr></thead>
+      <tbody id="saleBody"></tbody>
+    </table></div>
+  </div>
+</section>
+
+<section id="view-lotes" class="view">
+  <div class="panel">
+    <div class="head"><div><h2>Control de lotes</h2><p>Existencias de cada subcódigo.</p></div><input id="lotSearch" class="search" placeholder="Buscar"></div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Fecha</th><th>Código</th><th>Lote</th><th>Producto</th><th>Marca</th><th>Comprado</th><th>Vendido</th><th>Disponible</th><th>Coste unit.</th><th>Valor restante</th><th>Estado</th></tr></thead>
+      <tbody id="lotBody"></tbody>
+    </table></div>
+  </div>
+</section>
+
+<section id="view-billetera" class="view">
+  <div class="cards wallet-cards">
+    <div class="card"><span>Saldo CUP CASH</span><b id="walletCup">0,00</b></div>
+    <div class="card"><span>Saldo USD CASH</span><b id="walletUsd">0,00</b></div>
+    <div class="card"><span>Saldo TRANSFERENCIA</span><b id="walletTransfer">0,00</b></div>
+  </div>
+  <div class="panel"><label style="display:flex;gap:10px;align-items:center"><input id="salesToWallet" type="checkbox" style="width:auto"> Sumar a la billetera las ventas cobradas</label><p style="margin:8px 0 0">Actívalo solo si no registras ya esos ingresos a mano, para no duplicarlos.</p></div>
+  <div class="panel">
+    <h2 id="walletFormTitle">Nuevo movimiento</h2><p>Registra movimientos manuales. Las compras se descuentan automáticamente de la moneda correspondiente.</p>
+    <div id="walletEditBanner" class="edit-banner hidden">Editando un movimiento de la billetera.</div>
+    <form id="walletForm" class="grid">
+      <input id="walletEditId" type="hidden">
+      <label>Tipo<select id="walletType" required><option value="entrada">Entrada</option><option value="salida">Salida</option></select></label>
+      <label>Moneda<select id="walletCurrency" required><option>CUP CASH</option><option>USD CASH</option><option>TRANSFERENCIA</option></select></label>
+      <label>Fecha<input id="walletDate" type="date" required></label>
+      <label>Importe<input id="walletAmount" type="number" min=".01" step=".01" required></label>
+      <label class="span2">Nota<input id="walletNote" maxlength="250" placeholder="Motivo del movimiento"></label>
+      <div class="actions"><button id="walletSubmit" class="btn primary">Guardar movimiento</button><button id="cancelWalletEdit" type="button" class="btn secondary hidden">Cancelar</button></div>
+    </form>
+  </div>
+  <div class="panel">
+    <div class="head"><div><h2>Movimientos de la billetera</h2><p>Incluye movimientos manuales y cargos automáticos generados por Compras.</p></div><div class="filters"><input id="walletSearch" class="search" placeholder="Buscar nota o moneda"><input id="walletMonth" type="month"></div></div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Fecha</th><th>Tipo</th><th>Moneda</th><th>Importe</th><th>Nota</th><th>Acciones</th></tr></thead>
+      <tbody id="walletBody"></tbody>
+    </table></div>
+  </div>
+</section>
+
+<section id="view-cierre" class="view">
+  <div class="panel">
+    <div class="head"><div><h2>Cierre mensual</h2><p>Los totales suman todas las monedas; mira el desglose por moneda más abajo.</p></div><input id="closeMonth" type="month"></div>
+    <div class="cards">
+      <div class="card"><span>Total vendido</span><b id="closeSales">0,00</b></div>
+      <div class="card"><span>Total comprado</span><b id="closePurchases">0,00</b></div>
+      <div class="card"><span>Coste vendido</span><b id="closeCost">0,00</b></div>
+      <div class="card"><span>Ganancia</span><b id="closeProfit">0,00</b></div>
+      <div class="card"><span>% ganancia</span><b id="closeProfitPercent">0,00 %</b></div>
+      <div class="card"><span>Unidades vendidas</span><b id="closeUnits">0</b></div>
+    </div>
+  </div>
+  <div class="panel"><h2>Resultado por moneda</h2><p>Evita mezclar CUP, USD y transferencias.</p><div class="table-wrap"><table style="min-width:600px"><thead><tr><th>Moneda</th><th>Vendido</th><th>Comprado</th><th>Coste vendido</th><th>Ganancia</th></tr></thead><tbody id="closeCurrencyBody"></tbody></table></div></div>
+  <div class="panel"><h2>Detalle por producto</h2><p>Compras y ventas del mes.</p>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Código</th><th>Producto</th><th>Comprado</th><th>Inversión</th><th>Vendido</th><th>Ventas</th><th>Coste</th><th>Ganancia</th><th>% ganancia</th></tr></thead>
+      <tbody id="closeBody"></tbody>
+    </table></div>
+  </div>
+</section>
+
+<section id="view-datos" class="view">
+  <div class="two">
+    <div class="panel"><h2>Datos y copias</h2><p>Guarda una copia manual o vincula un archivo de datos del ordenador.</p><div class="stack">
+      <button id="linkDataFile" class="btn primary" type="button">Vincular archivo de datos</button>
+      <button id="openDataFile" class="btn secondary" type="button">Abrir archivo de datos</button>
+      <small id="dataFileStatus">Base de datos interna activa.</small>
+      <button id="backupButton" class="btn secondary" type="button">Descargar copia</button>
+      <label>Restaurar copia<input id="restoreInput" type="file" accept=".json"></label>
+    </div></div>
+    <div class="panel"><h2>Exportar CSV</h2><p>Compatible con Excel.</p><div class="stack"><button id="exportInventory" class="btn secondary">Inventario</button><button id="exportPurchases" class="btn secondary">Compras</button><button id="exportSales" class="btn secondary">Ventas</button><button id="exportWallet" class="btn secondary">Billetera</button></div></div>
+  </div>
+  <div class="panel"><h2>Puntos de restauración automáticos</h2><p>La app guarda sola puntos internos. Úsalos si algo sale mal.</p><div class="stack"><select id="snapSelect"></select><button id="snapRestore" class="btn secondary" type="button">Restaurar punto seleccionado</button><button id="reconnectBtn" class="btn secondary" type="button">Reconectar archivo vinculado</button></div></div>
+  <div class="panel"><h2>Borrar toda la información</h2><p>Esta acción no se puede deshacer sin una copia.</p><button id="clearAll" class="btn danger">Borrar todos los datos</button></div>
+</section>
+</main>
+</div>
+<div id="toast" class="toast"></div>
+
+<script>
+"use strict";
+const KEY="controlInventarioOfflineV2Corregida";
+const BACKUP_KEY="controlInventarioOfflineV2Corregida_backup";
+const SNAPSHOT_KEY="controlInventarioOfflineV2Corregida_snapshot";
+const LEGACY_KEYS=[
+  "controlInventarioOfflineV3",
+  "inventarioOfflineV2_1",
+  "inventarioOfflineV2",
+  "inventarioOfflineV1"
+];
+let db={products:[],purchases:[],sales:[],wallet:[]};
+
+const $=id=>document.getElementById(id);
+const num=v=>Number(v||0);
+const round2=v=>Math.round((num(v)+Number.EPSILON)*100)/100;
+const clean=v=>String(v??"").trim();
+const normalizeCode=v=>clean(v).toUpperCase();
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2);
+const pad=v=>String(v).padStart(2,"0");
+const todayISO=()=>{const d=new Date();return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`};
+const currentMonth=()=>todayISO().slice(0,7);
+const formatMoney=v=>new Intl.NumberFormat("es-ES",{minimumFractionDigits:2,maximumFractionDigits:2}).format(num(v));
+const formatNumber=v=>new Intl.NumberFormat("es-ES",{maximumFractionDigits:2}).format(num(v));
+const formatPercent=v=>`${formatMoney(v)} %`;
+const formatDate=v=>{if(!v)return"";const [y,m,d]=v.split("-");return `${d}/${m}/${y}`};
+const escapeHtml=v=>String(v??"").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;");
+
+
+function normalizeDatabase(source){
+  const parsed=(source&&typeof source==="object")?source:{};
+  const products=(parsed.products||[]).map((p,i)=>({
+    id:p.id||uid(),code:normalizeCode(p.code),name:p.name||"",brand:p.brand||"",
+    initial:num(p.initial??p.initialStock),min:num(p.min??p.minStock),
+    order:num(p.order)||i+1, _originalIndex:i
+  }));
+  products.sort((a,b)=>num(a.order)-num(b.order)||a._originalIndex-b._originalIndex);
+  products.forEach((p,i)=>{p.order=i+1;delete p._originalIndex});
+  const purchases=(parsed.purchases||[]).map(p=>({
+    id:p.id||uid(),code:normalizeCode(p.code),subcode:normalizeCode(p.subcode),date:p.date||todayISO(),
+    qty:num(p.qty??p.quantity),cost:num(p.cost??p.unitCost),
+    total:num(p.total)||round2(num(p.qty??p.quantity)*num(p.cost??p.unitCost)),
+    currency:p.currency||"USD CASH",note:p.note||"",brand:p.brand||"",productName:p.productName||"",
+    created:p.created||p.createdAt||Date.now()
+  }));
+  const sales=(parsed.sales||[]).map(s=>({
+    id:s.id||uid(),code:normalizeCode(s.code),subcode:normalizeCode(s.subcode),date:s.date||todayISO(),
+    qty:num(s.qty??s.quantity),price:num(s.price??s.unitPrice),
+    total:num(s.total)||round2(num(s.qty??s.quantity)*num(s.price??s.unitPrice)),
+    unitCost:num(s.unitCost),costTotal:num(s.costTotal),
+    profit:num(s.profit),profitPercent:num(s.profitPercent??(s.roi!=null?s.roi*100:0)),
+    currency:s.currency||"USD CASH",note:s.note||"",brand:s.brand||"",customer:s.customer||"",paid:s.paid!==false,productName:s.productName||"",
+    created:s.created||s.createdAt||Date.now()
+  }));
+  const wallet=(parsed.wallet||[]).map(w=>({
+    id:w.id||uid(),type:w.type==="salida"?"salida":"entrada",
+    currency:w.currency||"CUP CASH",date:w.date||todayISO(),
+    amount:num(w.amount),note:w.note||"",created:w.created||w.createdAt||Date.now()
+  }));
+  return {products,purchases,sales,wallet,settings:{salesToWallet:!!parsed.settings?.salesToWallet}};
+}
+
+const IDB_NAME="ControlInventarioDB";
+const IDB_STORE="datos";
+const IDB_VERSION=1;
+let appIDB=null;
+let linkedFileHandle=null;
+let dataLoaded=false,lastSavedJSON="";
+const hasData=d=>!!(d&&(d.products?.length||d.purchases?.length||d.sales?.length||d.wallet?.length));
+function showAlert(html,bad=false){const a=$("alertBar");a.innerHTML=html;a.classList.remove("hidden");a.classList.toggle("alert-bad",bad)}
+function hideAlert(){$("alertBar").classList.add("hidden")}
+let saveQueue=Promise.resolve();
+
+function openIDB(){
+  if(appIDB)return Promise.resolve(appIDB);
+  return new Promise((resolve,reject)=>{
+    const t=setTimeout(()=>reject(new Error("La base de datos no responde. Cierra otras pestañas de esta app y recarga.")),8000);
+    const request=indexedDB.open(IDB_NAME,IDB_VERSION);
+    request.onupgradeneeded=()=>{if(!request.result.objectStoreNames.contains(IDB_STORE))request.result.createObjectStore(IDB_STORE)};
+    request.onsuccess=()=>{clearTimeout(t);appIDB=request.result;appIDB.onversionchange=()=>{appIDB.close();appIDB=null};appIDB.onclose=()=>{appIDB=null};resolve(appIDB)};
+    request.onerror=()=>{clearTimeout(t);reject(request.error)};
+  });
+}
+async function idbGet(key){
+  const database=await openIDB();
+  return new Promise((resolve,reject)=>{
+    const request=database.transaction(IDB_STORE,"readonly").objectStore(IDB_STORE).get(key);
+    request.onsuccess=()=>resolve(request.result);
+    request.onerror=()=>reject(request.error);
+  });
+}
+async function idbSet(key,value){
+  const database=await openIDB();
+  return new Promise((resolve,reject)=>{
+    const tx=database.transaction(IDB_STORE,"readwrite");
+    tx.objectStore(IDB_STORE).put(value,key);
+    tx.oncomplete=()=>resolve(true);
+    tx.onerror=()=>reject(tx.error);
+    tx.onabort=()=>reject(tx.error||new Error("Guardado cancelado"));
+  });
+}
+async function idbDelete(key){
+  const database=await openIDB();
+  return new Promise((resolve,reject)=>{
+    const tx=database.transaction(IDB_STORE,"readwrite");
+    tx.objectStore(IDB_STORE).delete(key);
+    tx.oncomplete=()=>resolve(true);
+    tx.onerror=()=>reject(tx.error);
+  });
+}
+function legacyDatabase(){
+  try{
+    const keys=[KEY,BACKUP_KEY,SNAPSHOT_KEY,...LEGACY_KEYS];
+    for(const key of keys){
+      const raw=localStorage.getItem(key);
+      if(raw){
+        const parsed=JSON.parse(raw);readLinkedFile.stamp=Date.parse(parsed.updatedAt)||0;
+    return normalizeDatabase(parsed.data||parsed);
+      }
+    }
+  }catch(error){console.warn("No se pudieron importar datos antiguos:",error)}
+  return null;
+}
+async function readLinkedFile(handle){
+  if(!handle)return null;
+  try{
+    const permission=await handle.queryPermission({mode:"readwrite"});
+    if(permission!=="granted")return null;
+    const file=await handle.getFile();
+    const raw=await file.text();
+    if(!raw.trim())return null;
+    const parsed=JSON.parse(raw);
+    return normalizeDatabase(parsed.data||parsed);
+  }catch(error){
+    console.warn("No se pudo leer el archivo vinculado:",error);
+    return null;
+  }
+}
+async function writeLinkedFile(){
+  if(!linkedFileHandle)return false;
+  try{
+    let permission=await linkedFileHandle.queryPermission({mode:"readwrite"});
+    if(permission!=="granted")return false;
+    const writable=await linkedFileHandle.createWritable();
+    await writable.write(JSON.stringify({
+      app:"Control de Inventario",
+      format:2,
+      updatedAt:new Date().toISOString(),
+      data:db
+    },null,2));
+    await writable.close();
+    updateDataFileStatus("Archivo de datos vinculado y actualizado.");
+    return true;
+  }catch(error){
+    console.error("No se pudo escribir el archivo vinculado:",error);
+    updateDataFileStatus("No se pudo actualizar el archivo vinculado.",true);
+    return false;
+  }
+}
+async function loadDatabase(){
+  linkedFileHandle=await idbGet("fileHandle")||null;
+  const stored=await idbGet("current"),savedAt=num(await idbGet("savedAt"));
+  readLinkedFile.stamp=0;
+  const fromFile=await readLinkedFile(linkedFileHandle),fileStamp=readLinkedFile.stamp||0;
+  if(fromFile&&(!stored||fileStamp>=savedAt))return fromFile;
+  if(stored)return normalizeDatabase(stored);
+  if(fromFile)return fromFile;
+  return legacyDatabase()||{products:[],purchases:[],sales:[],wallet:[]};
+}
+function saveDatabase(){
+  saveQueue=saveQueue.then(async()=>{
+    if(!dataLoaded)return false;
+    try{
+      const json=JSON.stringify(db);
+      if(json===lastSavedJSON)return true;
+      const previous=await idbGet("current");
+      if(hasData(previous)){
+        const snaps=(await idbGet("snapshots"))||[];
+        if(!snaps.length||Date.now()-snaps[0].at>7200000)await idbSet("snapshots",[{at:Date.now(),data:previous},...snaps].slice(0,20));
+      }
+      await idbSet("current",JSON.parse(json));
+      await idbSet("savedAt",Date.now());
+      const verified=await idbGet("current");
+      if(!verified||JSON.stringify(verified)!==json)throw new Error("La verificación del guardado falló");
+      lastSavedJSON=json;
+      try{localStorage.setItem(KEY,json)}catch(_){}
+      await Promise.race([writeLinkedFile(),new Promise(r=>setTimeout(()=>r(false),10000))]);
+      updateSaveStatus("Guardado "+new Date().toLocaleTimeString("es-ES",{hour:"2-digit",minute:"2-digit"}));
+      void renderSnapshots();
+      return true;
+    }catch(error){
+      console.error("No se pudieron guardar los datos:",error);
+      updateSaveStatus("Error al guardar",true);
+      showAlert("No se pudieron guardar los datos. Descarga una copia en «Copias y datos» y recarga la página.",true);
+      return false;
+    }
+  });
+  return saveQueue;
+}
+async function renderSnapshots(){
+  try{
+    const snaps=(await idbGet("snapshots"))||[];
+    $("snapSelect").innerHTML=snaps.length?snaps.map((s,i)=>`<option value="${i}">${new Date(s.at).toLocaleString("es-ES")} · ${s.data.products?.length||0} prod. · ${s.data.sales?.length||0} ventas</option>`).join(""):`<option value="">Aún no hay puntos</option>`;
+  }catch(_){}
+}
+async function reconnectFile(){
+  try{
+    if(!linkedFileHandle)throw new Error("sin archivo");
+    if(await linkedFileHandle.requestPermission({mode:"readwrite"})!=="granted")throw new Error("permiso");
+    readLinkedFile.stamp=0;const f=await readLinkedFile(linkedFileHandle);
+    if(f&&readLinkedFile.stamp>num(await idbGet("savedAt"))&&confirm("El archivo vinculado es más reciente que los datos del navegador. ¿Cargarlo?")){db=f;lastSavedJSON=""}
+    await writeLinkedFile();hideAlert();renderAll();toast("Archivo reconectado.");
+  }catch(e){console.error(e);toast("No se pudo reconectar el archivo.",true)}
+}
+$("reconnectBtn").onclick=reconnectFile;
+$("snapRestore").onclick=async()=>{
+  const s=((await idbGet("snapshots"))||[])[num($("snapSelect").value)];
+  if(!s||!confirm("Esto sustituirá los datos actuales por ese punto. ¿Continuar?"))return;
+  await idbSet("previous",db);db=normalizeDatabase(s.data);dataLoaded=true;lastSavedJSON="";await saveDatabase();renderAll();toast("Punto restaurado.");
+};
+function updateDataFileStatus(message,error=false){
+  const el=document.getElementById("dataFileStatus");
+  if(!el)return;
+  el.textContent=message;
+  el.style.color=error?"#b42318":"";
+}
+
+function updateSaveStatus(message,error=false){
+  const el=document.getElementById("saveStatus");
+  if(!el)return;
+  el.textContent=message;
+  el.style.color=error?"#b42318":"#157347";
+}
+function toast(message,error=false){
+  const el=$("toast");el.textContent=message;el.className=`toast show${error?" err":""}`;
+  clearTimeout(toast.timer);toast.timer=setTimeout(()=>el.className="toast",3000);
+}
+function productByCode(code){return db.products.find(p=>p.code===normalizeCode(code))}
+function purchaseBySubcode(subcode){return db.purchases.find(p=>p.subcode===subcode)}
+function orderedProducts(){return db.products.slice().sort((a,b)=>num(a.order)-num(b.order)||a.code.localeCompare(b.code))}
+function purchasedByCode(code){return round2(db.purchases.filter(p=>p.code===code).reduce((s,p)=>s+num(p.qty),0))}
+function soldByCode(code,excludeSaleId=""){return round2(db.sales.filter(s=>s.code===code&&s.id!==excludeSaleId).reduce((sum,s)=>sum+num(s.qty),0))}
+function stockByCode(code,excludeSaleId=""){const p=productByCode(code);return p?round2(num(p.initial)+purchasedByCode(p.code)-soldByCode(p.code,excludeSaleId)):0}
+function soldByLot(subcode,excludeSaleId=""){return round2(db.sales.filter(s=>s.subcode===subcode&&s.id!==excludeSaleId).reduce((sum,s)=>sum+num(s.qty),0))}
+function stockByLot(subcode,excludeSaleId=""){const p=purchaseBySubcode(subcode);return p?round2(num(p.qty)-soldByLot(subcode,excludeSaleId)):0}
+function stockValue(code){return round2(db.purchases.filter(p=>p.code===code).reduce((s,p)=>s+Math.max(0,stockByLot(p.subcode))*num(p.cost),0))}
+function emptyRow(cols,msg){return `<tr><td class="empty" colspan="${cols}">${msg}</td></tr>`}
+function monthMatches(date,month){return !month||String(date||"").startsWith(month)}
+function manualWalletBalance(currency){return round2(db.wallet.filter(w=>w.currency===currency).reduce((s,w)=>s+(w.type==="entrada"?num(w.amount):-num(w.amount)),0))}
+function purchaseSpend(currency){return round2(db.purchases.filter(p=>p.currency===currency).reduce((s,p)=>s+num(p.total),0))}
+const salesIncome=c=>db.settings?.salesToWallet?round2(db.sales.filter(s=>s.currency===c&&s.paid!==false).reduce((t,s)=>t+num(s.total),0)):0;
+function walletBalance(currency){return round2(manualWalletBalance(currency)-purchaseSpend(currency)+salesIncome(currency))}
+
+
+function auditDatabase(){
+  const issues=[];
+  const productCodes=new Set();
+  for(const p of db.products){
+    if(!p.code||productCodes.has(p.code))issues.push("Código de producto duplicado o vacío");
+    productCodes.add(p.code);
+  }
+  const lotCodes=new Set();
+  for(const p of db.purchases){
+    if(!productCodes.has(p.code))issues.push(`Compra sin producto: ${p.code}`);
+    if(!p.subcode||lotCodes.has(p.subcode))issues.push(`Lote duplicado o vacío: ${p.subcode}`);
+    lotCodes.add(p.subcode);
+    if(num(p.qty)<=0||num(p.cost)<=0)issues.push(`Compra inválida: ${p.subcode}`);
+  }
+  for(const s of db.sales){
+    if(!productCodes.has(s.code))issues.push(`Venta sin producto: ${s.code}`);
+    if(s.subcode){
+      const lot=purchaseBySubcode(s.subcode);
+      if(!lot||lot.code!==s.code)issues.push(`Venta con lote inválido: ${s.subcode}`);
+    }
+    if(num(s.qty)<=0||num(s.price)<=0)issues.push(`Venta inválida: ${s.id}`);
+  }
+  return issues;
+}
+
+function renderAll(){
+  const issues=auditDatabase();
+  if(issues.length)console.warn("Comprobación de datos:",issues);
+  renderProductList();
+  renderSummary();renderInsights();
+  renderInventory();
+  renderPurchases();
+  renderSales();
+  renderLots();
+  renderWallet();
+  renderClose();
+  updatePurchasePreview();
+  updateSaleLots();
+  updateSalePreview();
+}
+function renderProductList(){
+  $("productCodeList").innerHTML=orderedProducts().map(p=>`<option value="${escapeHtml(p.code)}">${escapeHtml(p.name)}${p.brand?" · "+escapeHtml(p.brand):""}</option>`).join("");
+}
+function renderSummary(){
+  $("mProducts").textContent=db.products.length;
+  $("mStock").textContent=formatNumber(db.products.reduce((s,p)=>s+stockByCode(p.code),0));
+  $("mStockValue").textContent=formatMoney(db.products.reduce((s,p)=>s+stockValue(p.code),0));
+  $("mMonthProfit").textContent=formatMoney(db.sales.filter(s=>monthMatches(s.date,currentMonth())).reduce((s,x)=>s+num(x.profit),0));
+
+  const low=orderedProducts().map(p=>({...p,current:stockByCode(p.code)})).filter(p=>p.current<=num(p.min));
+  $("lowStock").innerHTML=low.length?low.map(p=>`<div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid #eee"><b>${escapeHtml(p.code)} — ${escapeHtml(p.name)}</b><span class="badge ${p.current<0?"bad":"warn"}">${formatNumber(p.current)}</span></div>`).join(""):`<div class="empty">Sin avisos.</div>`;
+
+  const movements=[
+    ...db.purchases.map(x=>({kind:"Compra",date:x.date,description:`${x.code} · ${x.subcode}`,amount:x.qty,created:x.created})),
+    ...db.sales.map(x=>({kind:"Venta",date:x.date,description:`${x.code} · ${x.subcode||"Sin lote"}`,amount:x.qty,created:x.created})),
+    ...db.wallet.map(x=>({kind:x.type==="entrada"?"Entrada":"Salida",date:x.date,description:`${x.currency} · ${x.note||"Sin nota"}`,amount:x.amount,created:x.created}))
+  ].sort((a,b)=>b.date.localeCompare(a.date)||num(b.created)-num(a.created)).slice(0,8);
+  $("recentMovements").innerHTML=movements.length?movements.map(x=>`<div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid #eee"><span><b>${escapeHtml(x.kind)}</b><br><small>${escapeHtml(x.description)} · ${formatDate(x.date)}</small></span><span class="badge ${x.kind==="Salida"?"bad":x.kind==="Venta"?"warn":"ok"}">${formatNumber(x.amount)}</span></div>`).join(""):`<div class="empty">Sin movimientos.</div>`;
+}
+function resequenceProducts(products=orderedProducts()){
+  products.forEach((p,i)=>p.order=i+1);
+  return products;
+}
+function renderInventory(){
+  const q=clean($("inventorySearch").value).toLowerCase();
+  const all=orderedProducts();
+  const rows=all.filter(p=>!q||p.code.toLowerCase().includes(q)||p.name.toLowerCase().includes(q)||(p.brand||"").toLowerCase().includes(q));
+  $("inventoryBody").innerHTML=rows.length?rows.map(p=>{
+    const current=stockByCode(p.code);
+    const state=current<0?["bad","Negativo"]:current<=num(p.min)?["warn","Reponer"]:["ok","Correcto"];
+    const index=all.findIndex(x=>x.id===p.id);
+    return `<tr class="product-row" draggable="true" data-product-id="${p.id}"
+      ondragstart="startProductDrag(event,'${p.id}')" ondragend="endProductDrag(event)"
+      ondragover="allowProductDrop(event)" ondragleave="leaveProductDrop(event)" ondrop="dropProduct(event,'${p.id}')">
+      <td><span class="order-number">${index+1}</span><span class="reorder-actions">
+        <button class="reorder-btn" type="button" title="Subir" ${index===0?"disabled":""} onclick="moveProduct('${p.id}',-1)">↑</button>
+        <button class="reorder-btn" type="button" title="Bajar" ${index===all.length-1?"disabled":""} onclick="moveProduct('${p.id}',1)">↓</button>
+      </span></td>
+      <td><b>${escapeHtml(p.code)}</b></td><td>${escapeHtml(p.name)}</td><td>${escapeHtml(p.brand||"")}</td>
+      <td>${formatNumber(p.initial)}</td><td>${formatNumber(purchasedByCode(p.code))}</td><td>${formatNumber(soldByCode(p.code))}</td>
+      <td class="${current<0?"negative":""}"><b>${formatNumber(current)}</b></td><td>${formatNumber(p.min)}</td><td>${formatMoney(stockValue(p.code))}</td>
+      <td><span class="badge ${state[0]}">${state[1]}</span></td>
+      <td><button class="btn secondary" onclick="editProduct('${p.id}')">Editar</button> <button class="btn danger" onclick="deleteProduct('${p.id}')">Eliminar</button></td>
+    </tr>`;
+  }).join(""):emptyRow(12,"No hay productos.");
+}
+window.moveProduct=async(id,direction)=>{
+  const items=orderedProducts();
+  const from=items.findIndex(p=>p.id===id),to=from+direction;
+  if(from<0||to<0||to>=items.length)return;
+  [items[from],items[to]]=[items[to],items[from]];
+  resequenceProducts(items);
+  if(!await saveDatabase())return;
+  renderAll();
+};
+let draggedProductId="";
+window.startProductDrag=(event,id)=>{
+  draggedProductId=id;
+  event.dataTransfer.effectAllowed="move";
+  event.dataTransfer.setData("text/plain",id);
+  event.currentTarget.classList.add("dragging");
+};
+window.endProductDrag=event=>{
+  event.currentTarget.classList.remove("dragging");
+  document.querySelectorAll(".product-row.drag-over").forEach(x=>x.classList.remove("drag-over"));
+  draggedProductId="";
+};
+window.allowProductDrop=event=>{
+  event.preventDefault();
+  event.dataTransfer.dropEffect="move";
+  event.currentTarget.classList.add("drag-over");
+};
+window.leaveProductDrop=event=>event.currentTarget.classList.remove("drag-over");
+window.dropProduct=async(event,targetId)=>{
+  event.preventDefault();
+  event.currentTarget.classList.remove("drag-over");
+  const sourceId=draggedProductId||event.dataTransfer.getData("text/plain");
+  if(!sourceId||sourceId===targetId)return;
+  const items=orderedProducts();
+  const from=items.findIndex(p=>p.id===sourceId),to=items.findIndex(p=>p.id===targetId);
+  if(from<0||to<0)return;
+  const [moved]=items.splice(from,1);
+  items.splice(to,0,moved);
+  resequenceProducts(items);
+  if(!await saveDatabase())return;
+  renderAll();
+};
+function renderPurchases(){
+  const q=clean($("purchaseSearch").value).toLowerCase(),month=$("purchaseMonth").value;
+  const rows=db.purchases.slice().sort((a,b)=>b.date.localeCompare(a.date)||num(b.created)-num(a.created)).filter(p=>{
+    const text=`${p.code} ${p.subcode} ${productByCode(p.code)?.name||p.productName} ${p.currency} ${p.brand||""} ${p.note}`.toLowerCase();
+    return (!q||text.includes(q))&&monthMatches(p.date,month);
+  });
+  $("purchaseBody").innerHTML=rows.length?rows.map(p=>`<tr>
+    <td>${formatDate(p.date)}</td><td><b>${escapeHtml(p.code)}</b></td><td>${escapeHtml(p.subcode)}</td>
+    <td>${escapeHtml(productByCode(p.code)?.name||p.productName||"")}</td><td>${escapeHtml(p.brand||productByCode(p.code)?.brand||"")}</td><td>${escapeHtml(p.currency)}</td>
+    <td>${formatNumber(p.qty)}</td><td>${formatMoney(p.cost)}</td><td><b>${formatMoney(p.total)}</b></td>
+    <td class="note">${escapeHtml(p.note||"")}</td>
+    <td><button class="btn secondary" onclick="editPurchase('${p.id}')">Editar</button> <button class="btn danger" onclick="deletePurchase('${p.id}')">Eliminar</button></td>
+  </tr>`).join(""):emptyRow(11,"No hay compras.");
+}
+function renderSales(){
+  const q=clean($("saleSearch").value).toLowerCase(),month=$("saleMonth").value;
+  const rows=db.sales.slice().sort((a,b)=>b.date.localeCompare(a.date)||num(b.created)-num(a.created)).filter(s=>{
+    const text=`${s.code} ${s.subcode||"sin lote"} ${productByCode(s.code)?.name||s.productName} ${s.currency} ${s.brand||""} ${s.customer||""} ${s.note}`.toLowerCase();
+    return (!q||text.includes(q))&&monthMatches(s.date,month);
+  });
+  $("saleBody").innerHTML=rows.length?rows.map(s=>`<tr>
+    <td>${formatDate(s.date)}</td><td><b>${escapeHtml(s.code)}</b></td><td>${escapeHtml(s.subcode||"Sin lote")}</td>
+    <td>${escapeHtml(productByCode(s.code)?.name||s.productName||"")}</td><td>${escapeHtml(s.brand||productByCode(s.code)?.brand||"")}</td><td>${escapeHtml(s.currency)}</td>
+    <td>${formatNumber(s.qty)}</td><td>${formatMoney(s.price)}</td><td><b>${formatMoney(s.total)}</b></td>
+    <td>${formatMoney(s.costTotal)}</td><td class="${s.profit<0?"negative":""}"><b>${formatMoney(s.profit)}</b></td>
+    <td>${formatPercent(s.profitPercent)}</td><td>${escapeHtml(s.customer||"")}</td><td>${s.paid===false?`<span class="badge bad">Pendiente</span> <button class="btn secondary" onclick="collectSale('${s.id}')">Cobrar</button>`:`<span class="badge ok">Cobrada</span>`}</td><td class="note">${escapeHtml(s.note||"")}</td>
+    <td><button class="btn secondary" onclick="editSale('${s.id}')">Editar</button> <button class="btn danger" onclick="deleteSale('${s.id}')">Eliminar</button></td>
+  </tr>`).join(""):emptyRow(15,"No hay ventas.");
+}
+function renderLots(){
+  const q=clean($("lotSearch").value).toLowerCase();
+  const rows=db.purchases.filter(p=>`${p.code} ${p.subcode} ${productByCode(p.code)?.name||p.productName} ${p.brand||""}`.toLowerCase().includes(q));
+  $("lotBody").innerHTML=rows.length?rows.map(p=>{
+    const available=stockByLot(p.subcode),cls=available>0?"ok":available===0?"warn":"bad",label=available>0?"Disponible":available===0?"Agotado":"Negativo";
+    return `<tr><td>${formatDate(p.date)}</td><td><b>${escapeHtml(p.code)}</b></td><td>${escapeHtml(p.subcode)}</td>
+    <td>${escapeHtml(productByCode(p.code)?.name||p.productName||"")}</td><td>${escapeHtml(p.brand||productByCode(p.code)?.brand||"")}</td><td>${formatNumber(p.qty)}</td><td>${formatNumber(soldByLot(p.subcode))}</td>
+    <td class="${available<0?"negative":""}"><b>${formatNumber(available)}</b></td><td>${formatMoney(p.cost)}</td>
+    <td>${formatMoney(Math.max(0,available)*num(p.cost))}</td><td><span class="badge ${cls}">${label}</span></td></tr>`;
+  }).join(""):emptyRow(11,"No hay lotes.");
+}
+function renderWallet(){
+  $("salesToWallet").checked=!!db.settings?.salesToWallet;
+  const balances={
+    "CUP CASH":walletBalance("CUP CASH"),
+    "USD CASH":walletBalance("USD CASH"),
+    "TRANSFERENCIA":walletBalance("TRANSFERENCIA")
+  };
+  $("walletCup").textContent=formatMoney(balances["CUP CASH"]);
+  $("walletUsd").textContent=formatMoney(balances["USD CASH"]);
+  $("walletTransfer").textContent=formatMoney(balances["TRANSFERENCIA"]);
+  $("walletCup").classList.toggle("negative",balances["CUP CASH"]<0);
+  $("walletUsd").classList.toggle("negative",balances["USD CASH"]<0);
+  $("walletTransfer").classList.toggle("negative",balances["TRANSFERENCIA"]<0);
+
+  const q=clean($("walletSearch").value).toLowerCase(),month=$("walletMonth").value;
+  const manual=db.wallet.map(w=>({...w,automatic:false,description:w.note||""}));
+  const automatic=db.purchases.map(p=>({
+    id:`purchase:${p.id}`,type:"salida",currency:p.currency,date:p.date,amount:p.total,
+    note:`Compra ${p.code} · ${p.subcode} · ${productByCode(p.code)?.name||p.productName||""}`,
+    description:`Compra automática · ${p.code} · ${p.subcode}`,
+    created:p.created,automatic:true,purchaseId:p.id
+  }));
+  const autoSales=db.settings?.salesToWallet?db.sales.filter(s=>s.paid!==false).map(s=>({id:"sale:"+s.id,type:"entrada",currency:s.currency,date:s.date,amount:s.total,note:`Venta ${s.code} · ${s.subcode||"Sin lote"} · ${s.productName||""}`,created:s.created,automatic:true})):[];
+  const rows=[...manual,...automatic,...autoSales]
+    .sort((a,b)=>b.date.localeCompare(a.date)||num(b.created)-num(a.created))
+    .filter(w=>{
+      const text=`${w.automatic?"compra automática":w.type} ${w.currency} ${w.note}`.toLowerCase();
+      return (!q||text.includes(q))&&monthMatches(w.date,month);
+    });
+  $("walletBody").innerHTML=rows.length?rows.map(w=>`<tr>
+    <td>${formatDate(w.date)}</td><td><span class="badge ${w.type==="entrada"?"ok":"bad"}">${w.automatic?(w.type==="entrada"?"Venta automática":"Compra automática"):w.type==="entrada"?"Entrada":"Salida"}</span></td>
+    <td>${escapeHtml(w.currency)}</td><td class="${w.type==="salida"?"negative":""}"><b>${w.type==="salida"?"−":"+"}${formatMoney(w.amount)}</b></td>
+    <td class="note">${escapeHtml(w.note||"")}</td>
+    <td>${w.automatic?'<span class="badge warn">Automático</span>':`<button class="btn secondary" onclick="editWallet('${w.id}')">Editar</button> <button class="btn danger" onclick="deleteWallet('${w.id}')">Eliminar</button>`}</td>
+  </tr>`).join(""):emptyRow(6,"No hay movimientos.");
+}
+window.collectSale=async id=>{const s=db.sales.find(x=>x.id===id);if(!s)return;s.paid=true;await saveDatabase();renderAll();toast("Venta marcada como cobrada.")};
+const ago=n=>{const d=new Date();d.setDate(d.getDate()-n);return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`};
+function renderInsights(){
+  const row=(a,b,c)=>`<div style="display:flex;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid #eee"><span>${a}</span><span class="badge ${c}">${b}</span></div>`;
+  const pend=db.sales.filter(s=>s.paid===false),tot={};
+  pend.forEach(s=>tot[s.currency]=round2((tot[s.currency]||0)+num(s.total)));
+  $("receivables").className=pend.length?"":"empty";
+  $("receivables").innerHTML=pend.length?Object.entries(tot).map(([c,v])=>row(`<b>Total ${escapeHtml(c)}</b>`,formatMoney(v),"bad")).join("")+pend.slice(0,6).map(s=>row(`${escapeHtml(s.customer||"Sin cliente")} · ${escapeHtml(s.code)} <small>${formatDate(s.date)}</small>`,formatMoney(s.total),"warn")).join(""):"Nada pendiente.";
+  const d30=ago(30),d60=ago(60),items=[];
+  orderedProducts().forEach(p=>{
+    const stock=stockByCode(p.code),sold30=db.sales.filter(s=>s.code===p.code&&s.date>=d30).reduce((t,s)=>t+num(s.qty),0);
+    const label=`<b>${escapeHtml(p.code)}</b> ${escapeHtml(p.name)}${p.brand?" · "+escapeHtml(p.brand):""}`;
+    if(sold30>0&&stock/(sold30/30)<=15)items.push(row(label,`~${Math.max(0,Math.floor(stock/(sold30/30)))} días de stock`,"warn"));
+    else if(stock>0&&!db.sales.some(s=>s.code===p.code&&s.date>=d60)&&db.purchases.some(x=>x.code===p.code&&x.date<d60))items.push(row(label,"Sin ventas en 60 días","bad"));
+  });
+  $("insights").className=items.length?"":"empty";$("insights").innerHTML=items.length?items.slice(0,10).join(""):"Todo en orden.";
+}
+function renderClose(){
+  const month=$("closeMonth").value||currentMonth();
+  const purchases=db.purchases.filter(p=>monthMatches(p.date,month));
+  const sales=db.sales.filter(s=>monthMatches(s.date,month));
+  const totalSales=round2(sales.reduce((s,x)=>s+num(x.total),0));
+  const totalPurchases=round2(purchases.reduce((s,x)=>s+num(x.total),0));
+  const totalCost=round2(sales.reduce((s,x)=>s+num(x.costTotal),0));
+  const profit=round2(sales.reduce((s,x)=>s+num(x.profit),0));
+  const profitPercent=totalCost?profit/totalCost*100:0;
+  $("closeSales").textContent=formatMoney(totalSales);
+  $("closePurchases").textContent=formatMoney(totalPurchases);
+  $("closeCost").textContent=formatMoney(totalCost);
+  $("closeProfit").textContent=formatMoney(profit);
+  $("closeProfitPercent").textContent=formatPercent(profitPercent);
+  $("closeUnits").textContent=formatNumber(sales.reduce((s,x)=>s+num(x.qty),0));
+  $("closeCurrencyBody").innerHTML=["CUP CASH","USD CASH","TRANSFERENCIA"].map(c=>{
+    const ss=sales.filter(x=>x.currency===c),pp=purchases.filter(x=>x.currency===c),g=round2(ss.reduce((s,x)=>s+num(x.profit),0));
+    return `<tr><td><b>${c}</b></td><td>${formatMoney(ss.reduce((s,x)=>s+num(x.total),0))}</td><td>${formatMoney(pp.reduce((s,x)=>s+num(x.total),0))}</td><td>${formatMoney(ss.reduce((s,x)=>s+num(x.costTotal),0))}</td><td class="${g<0?"negative":""}"><b>${formatMoney(g)}</b></td></tr>`;
+  }).join("");
+
+  const rows=orderedProducts().map(p=>{
+    const pp=purchases.filter(x=>x.code===p.code),ss=sales.filter(x=>x.code===p.code);
+    const purchased=round2(pp.reduce((s,x)=>s+num(x.qty),0)),investment=round2(pp.reduce((s,x)=>s+num(x.total),0));
+    const sold=round2(ss.reduce((s,x)=>s+num(x.qty),0)),revenue=round2(ss.reduce((s,x)=>s+num(x.total),0));
+    const cost=round2(ss.reduce((s,x)=>s+num(x.costTotal),0)),gain=round2(ss.reduce((s,x)=>s+num(x.profit),0));
+    return {p,purchased,investment,sold,revenue,cost,gain,pct:cost?gain/cost*100:0};
+  }).filter(x=>x.purchased||x.sold);
+  $("closeBody").innerHTML=rows.length?rows.map(x=>`<tr>
+    <td><b>${escapeHtml(x.p.code)}</b></td><td>${escapeHtml(x.p.name)}</td><td>${formatNumber(x.purchased)}</td>
+    <td>${formatMoney(x.investment)}</td><td>${formatNumber(x.sold)}</td><td>${formatMoney(x.revenue)}</td>
+    <td>${formatMoney(x.cost)}</td><td class="${x.gain<0?"negative":""}"><b>${formatMoney(x.gain)}</b></td><td>${formatPercent(x.pct)}</td>
+  </tr>`).join(""):emptyRow(9,"No hay movimientos en ese mes.");
+}
+
+function updatePurchasePreview(){
+  const c=normalizeCode($("purchaseCode").value);if($("purchaseCode").value!==c)$("purchaseCode").value=c;
+  $("purchaseProduct").value=productByCode(c)?.name||"";
+  if(!$("purchaseBrand").dataset.touched)$("purchaseBrand").value=productByCode(c)?.brand||"";
+  const total=round2(num($("purchaseQuantity").value)*num($("purchaseUnitCost").value));
+  $("purchaseTotal").value=total?formatMoney(total):"";
+}
+function updateSaleLots(){
+  const c=normalizeCode($("saleCode").value),current=$("saleSubcode").value,editId=$("saleEditId").value;
+  const lots=db.purchases.filter(p=>p.code===c&&stockByLot(p.subcode,editId)>0).sort((a,b)=>a.date.localeCompare(b.date));
+  $("saleSubcode").innerHTML=`<option value="">Selecciona</option><option value="__NO_LOT__">Sin lote específico</option>`+
+    lots.map(p=>`<option value="${escapeHtml(p.subcode)}">${escapeHtml(p.subcode)} · ${formatNumber(stockByLot(p.subcode,editId))} disponibles · coste ${formatMoney(p.cost)}</option>`).join("");
+  if([...$("saleSubcode").options].some(o=>o.value===current))$("saleSubcode").value=current;
+}
+function updateSalePreview(){
+  const c=normalizeCode($("saleCode").value);if($("saleCode").value!==c)$("saleCode").value=c;
+  const editId=$("saleEditId").value,sub=$("saleSubcode").value,noLot=sub==="__NO_LOT__",lot=!noLot&&sub?purchaseBySubcode(sub):null;
+  const p=productByCode(c);
+  $("saleProduct").value=p?.name||"";$("saleBrand").value=lot?.brand||p?.brand||"";
+  if(lot){$("saleUnitCost").value=lot.cost;$("saleUnitCost").readOnly=true}
+  else{$("saleUnitCost").readOnly=false;if(!noLot&&!editId)$("saleUnitCost").value=""}
+  $("saleAvailable").value=lot?formatNumber(stockByLot(sub,editId)):p?formatNumber(stockByCode(c,editId)):"";
+  const qty=num($("saleQuantity").value),price=num($("saleUnitPrice").value),cost=num($("saleUnitCost").value);
+  const total=round2(qty*price),costTotal=round2(qty*cost),profit=round2(total-costTotal),pct=costTotal?profit/costTotal*100:0;
+  $("saleTotal").value=qty&&price?formatMoney(total):"";
+  $("saleCostTotal").value=qty?formatMoney(costTotal):"";
+  $("saleProfit").value=qty&&price?formatMoney(profit):"";
+  $("saleProfitPercent").value=qty&&price?formatPercent(pct):"";
+}
+
+$("productForm").onsubmit=async e=>{
+  e.preventDefault();
+  const id=$("productEditId").value||uid(),old=db.products.find(p=>p.id===id);
+  const record={id,order:old?.order||(db.products.length+1),code:normalizeCode($("productCode").value),
+    name:clean($("productName").value),brand:clean($("productBrand").value),initial:round2($("productInitial").value),min:round2($("productMin").value)};
+  if(!record.code||!record.name)return toast("Código y producto son obligatorios.",true);
+  if(!Number.isFinite(record.initial)||!Number.isFinite(record.min)||record.initial<0||record.min<0)return toast("El stock inicial y mínimo deben ser números válidos.",true);
+  if(db.products.some(p=>p.code===record.code&&p.id!==id))return toast("Ese código ya existe.",true);
+  if(old&&old.code!==record.code&&(db.purchases.some(x=>x.code===old.code)||db.sales.some(x=>x.code===old.code)))return toast("No puedes cambiar un código que tiene movimientos.",true);
+  db.products=old?db.products.map(p=>p.id===id?record:p):[...db.products,record];
+  resequenceProducts();
+  if(!await saveDatabase())return;resetProductForm();renderAll();toast(old?"Producto actualizado.":"Producto guardado.");
+};
+function resetProductForm(){
+  $("productForm").reset();$("productEditId").value="";
+  $("productInitial").value=0;$("productMin").value=0;$("cancelProductEdit").classList.add("hidden");
+}
+window.editProduct=id=>{
+  const p=db.products.find(x=>x.id===id);if(!p)return;
+  $("productEditId").value=p.id;$("productCode").value=p.code;$("productName").value=p.name;$("productBrand").value=p.brand||"";
+  $("productInitial").value=p.initial;$("productMin").value=p.min;$("cancelProductEdit").classList.remove("hidden");scrollTo({top:0,behavior:"smooth"});
+};
+window.deleteProduct=async id=>{
+  const p=db.products.find(x=>x.id===id);if(!p)return;
+  if(db.purchases.some(x=>x.code===p.code)||db.sales.some(x=>x.code===p.code))return toast("No puedes eliminar un producto con movimientos.",true);
+  if(confirm(`¿Eliminar ${p.code} — ${p.name}?`)){db.products=db.products.filter(x=>x.id!==id);resequenceProducts();await saveDatabase();renderAll()}
+};
+
+$("purchaseForm").onsubmit=async e=>{
+  e.preventDefault();
+  const id=$("purchaseEditId").value||uid(),old=db.purchases.find(x=>x.id===id);
+  const code=normalizeCode($("purchaseCode").value),subcode=normalizeCode($("purchaseSubcode").value),p=productByCode(code);
+  const qty=round2($("purchaseQuantity").value),cost=round2($("purchaseUnitCost").value);
+  if(!p)return toast("Ese código no existe en Inventario.",true);
+  if(!subcode||db.purchases.some(x=>x.subcode===subcode&&x.id!==id))return toast("El subcódigo está vacío o ya existe.",true);
+  if(!$("purchaseDate").value||qty<=0||cost<=0)return toast("Revisa fecha, cantidad y precio.",true);
+  if(old){
+    const sold=soldByLot(old.subcode);
+    if(qty<sold)return toast(`Ya se vendieron ${formatNumber(sold)} unidades de ese lote.`,true);
+    if(old.subcode!==subcode&&sold>0)return toast("No puedes cambiar el subcódigo de una compra con ventas.",true);
+    if(old.code!==code&&sold>0)return toast("No puedes cambiar el producto de un lote que ya tiene ventas.",true);
+  }
+  const record={id,code,subcode,date:$("purchaseDate").value,currency:$("purchaseCurrency").value,qty,cost,total:round2(qty*cost),
+    note:clean($("purchaseNote").value),brand:clean($("purchaseBrand").value)||p.brand||"",productName:p.name,created:old?.created||Date.now()};
+  db.purchases=old?db.purchases.map(x=>x.id===id?record:x):[...db.purchases,record];
+  if(!await saveDatabase())return;resetPurchaseForm();renderAll();toast(old?"Compra actualizada.":"Compra registrada.");
+};
+function resetPurchaseForm(){
+  $("purchaseForm").reset();delete $("purchaseBrand").dataset.touched;$("purchaseEditId").value="";$("purchaseDate").value=todayISO();$("purchaseCurrency").value="CUP CASH";
+  $("purchaseFormTitle").textContent="Nueva compra";$("purchaseSubmit").textContent="Registrar compra";
+  $("purchaseEditBanner").classList.add("hidden");$("cancelPurchaseEdit").classList.add("hidden");
+}
+window.editPurchase=id=>{
+  const p=db.purchases.find(x=>x.id===id);if(!p)return;
+  $("purchaseEditId").value=p.id;$("purchaseCode").value=p.code;$("purchaseSubcode").value=p.subcode;$("purchaseDate").value=p.date;
+  $("purchaseCurrency").value=p.currency;$("purchaseQuantity").value=p.qty;$("purchaseUnitCost").value=p.cost;$("purchaseNote").value=p.note||"";
+  $("purchaseBrand").value=p.brand||"";$("purchaseBrand").dataset.touched="1";$("purchaseFormTitle").textContent="Editar compra";$("purchaseSubmit").textContent="Guardar cambios";
+  $("purchaseEditBanner").classList.remove("hidden");$("cancelPurchaseEdit").classList.remove("hidden");updatePurchasePreview();scrollTo({top:0,behavior:"smooth"});
+};
+window.deletePurchase=async id=>{
+  const p=db.purchases.find(x=>x.id===id);if(!p)return;
+  if(db.sales.some(s=>s.subcode===p.subcode))return toast("No puedes eliminar una compra con ventas vinculadas.",true);
+  if(confirm(`¿Eliminar el lote ${p.subcode}? El inventario se recalculará.`)){db.purchases=db.purchases.filter(x=>x.id!==id);await saveDatabase();renderAll()}
+};
+
+$("saleForm").onsubmit=async e=>{
+  e.preventDefault();
+  const id=$("saleEditId").value||uid(),old=db.sales.find(x=>x.id===id);
+  const code=normalizeCode($("saleCode").value),p=productByCode(code),choice=$("saleSubcode").value;
+  const noLot=choice==="__NO_LOT__",lot=!noLot?purchaseBySubcode(choice):null;
+  const qty=round2($("saleQuantity").value),price=round2($("saleUnitPrice").value),unitCost=round2($("saleUnitCost").value);
+  if(!p||(!noLot&&!lot))return toast("Selecciona un código y una opción de lote válidos.",true);
+  if(lot&&lot.code!==code)return toast("El lote seleccionado no pertenece a ese código.",true);
+  if(!$("saleDate").value||qty<=0||price<=0||unitCost<0)return toast("Revisa fecha, cantidad, precio y coste.",true);
+  if(noLot&&unitCost<=0&&!confirm("El precio coste es 0. La ganancia aparecerá igual al total de venta. ¿Guardar así?"))return;
+  if(lot&&$("saleDate").value<lot.date)return toast("La venta no puede ser anterior a la compra.",true);
+  const available=lot?stockByLot(choice,id):stockByCode(code,id);
+  if(qty>available)return toast(`Solo hay ${formatNumber(available)} unidades disponibles.`,true);
+  const total=round2(qty*price),costTotal=round2(qty*unitCost),profit=round2(total-costTotal),profitPercent=costTotal?profit/costTotal*100:0;
+  const record={id,code,subcode:noLot?"":choice,date:$("saleDate").value,currency:$("saleCurrency").value,qty,price,total,unitCost,
+    costTotal,profit,profitPercent,note:clean($("saleNote").value),brand:lot?.brand||p.brand||"",customer:clean($("saleCustomer").value),paid:$("salePaid").value!=="0",productName:p.name,created:old?.created||Date.now()};
+  db.sales=old?db.sales.map(x=>x.id===id?record:x):[...db.sales,record];
+  if(!await saveDatabase())return;resetSaleForm();renderAll();toast(old?"Venta actualizada.":"Venta registrada.");
+};
+function resetSaleForm(){
+  $("saleForm").reset();$("saleEditId").value="";$("saleDate").value=todayISO();$("saleCurrency").value="CUP CASH";
+  $("saleFormTitle").textContent="Nueva venta";$("saleSubmit").textContent="Registrar venta";
+  $("saleEditBanner").classList.add("hidden");$("cancelSaleEdit").classList.add("hidden");
+  $("saleUnitCost").readOnly=false;
+}
+window.editSale=id=>{
+  const s=db.sales.find(x=>x.id===id);if(!s)return;
+  $("saleEditId").value=s.id;$("saleCode").value=s.code;$("saleDate").value=s.date;$("saleCurrency").value=s.currency;
+  $("saleQuantity").value=s.qty;$("saleUnitPrice").value=s.price;$("saleUnitCost").value=s.unitCost;$("saleNote").value=s.note||"";
+  $("saleCustomer").value=s.customer||"";$("salePaid").value=s.paid===false?"0":"1";$("saleFormTitle").textContent="Editar venta";$("saleSubmit").textContent="Guardar cambios";
+  $("saleEditBanner").classList.remove("hidden");$("cancelSaleEdit").classList.remove("hidden");
+  updateSaleLots();$("saleSubcode").value=s.subcode||"__NO_LOT__";updateSalePreview();scrollTo({top:0,behavior:"smooth"});
+};
+window.deleteSale=async id=>{
+  if(confirm("¿Eliminar esta venta? El stock y el cierre mensual se recalcularán.")){db.sales=db.sales.filter(x=>x.id!==id);await saveDatabase();renderAll()}
+};
+
+$("walletForm").onsubmit=async e=>{
+  e.preventDefault();
+  const id=$("walletEditId").value||uid(),old=db.wallet.find(x=>x.id===id),amount=round2($("walletAmount").value);
+  if(!$("walletDate").value||amount<=0)return toast("Revisa fecha e importe.",true);
+  const record={id,type:$("walletType").value,currency:$("walletCurrency").value,date:$("walletDate").value,amount,
+    note:clean($("walletNote").value),created:old?.created||Date.now()};
+  db.wallet=old?db.wallet.map(x=>x.id===id?record:x):[...db.wallet,record];
+  if(!await saveDatabase())return;resetWalletForm();renderAll();toast(old?"Movimiento actualizado.":"Movimiento guardado.");
+};
+function resetWalletForm(){
+  $("walletForm").reset();$("walletEditId").value="";$("walletDate").value=todayISO();$("walletType").value="entrada";$("walletCurrency").value="CUP CASH";
+  $("walletFormTitle").textContent="Nuevo movimiento";$("walletSubmit").textContent="Guardar movimiento";
+  $("walletEditBanner").classList.add("hidden");$("cancelWalletEdit").classList.add("hidden");
+}
+window.editWallet=id=>{
+  const w=db.wallet.find(x=>x.id===id);if(!w)return;
+  $("walletEditId").value=w.id;$("walletType").value=w.type;$("walletCurrency").value=w.currency;$("walletDate").value=w.date;
+  $("walletAmount").value=w.amount;$("walletNote").value=w.note||"";
+  $("walletFormTitle").textContent="Editar movimiento";$("walletSubmit").textContent="Guardar cambios";
+  $("walletEditBanner").classList.remove("hidden");$("cancelWalletEdit").classList.remove("hidden");scrollTo({top:0,behavior:"smooth"});
+};
+window.deleteWallet=async id=>{
+  if(confirm("¿Eliminar este movimiento de la billetera?")){db.wallet=db.wallet.filter(x=>x.id!==id);await saveDatabase();renderAll()}
+};
+
+function download(name,content,type){const url=URL.createObjectURL(new Blob([content],{type}));const a=document.createElement("a");a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),4000)}
+function csv(name,headers,rows){const text="\ufeff"+[headers,...rows].map(row=>row.map(v=>`"${String(v??"").replaceAll('"','""')}"`).join(";")).join("\n");download(name,text,"text/csv;charset=utf-8")}
+$("backupButton").onclick=()=>download(`copia_inventario_${todayISO()}.json`,JSON.stringify({app:"Control de Inventario",format:1,createdAt:new Date().toISOString(),data:db},null,2),"application/json");
+$("backupButton").addEventListener("click",()=>{try{localStorage.setItem("ci_lastBackup",String(Date.now()))}catch(_){}hideAlert()});
+$("restoreInput").onchange=async e=>{
+  const file=e.target.files[0];if(!file)return;
+  try{
+    const parsed=JSON.parse(await file.text()),data=parsed.data||parsed;
+    if(!Array.isArray(data.products)||!Array.isArray(data.purchases)||!Array.isArray(data.sales))throw new Error();
+    if(confirm("La copia sustituirá todos los datos actuales. ¿Continuar?")){
+      await idbSet("previous",db);
+      db=normalizeDatabase(data);dataLoaded=true;lastSavedJSON="";
+      await saveDatabase();
+      renderAll();
+      toast("Copia restaurada.");
+    }
+  }catch(error){
+    console.error(error);
+    toast("El archivo no es una copia válida.",true);
+  }
+  e.target.value="";
+};
+
+$("linkDataFile").onclick=async()=>{
+  if(!window.showSaveFilePicker){
+    toast("Este navegador no permite vincular archivos. Usa Chrome o Edge.",true);
+    return;
+  }
+  try{
+    linkedFileHandle=await window.showSaveFilePicker({
+      suggestedName:"datos_inventario.json",
+      types:[{description:"Datos del inventario",accept:{"application/json":[".json"]}}]
+    });
+    await idbSet("fileHandle",linkedFileHandle);
+    const permission=await linkedFileHandle.requestPermission({mode:"readwrite"});
+    if(permission!=="granted")throw new Error("Permiso denegado");
+    await writeLinkedFile();
+    toast("Archivo de datos vinculado.");
+  }catch(error){
+    if(error?.name!=="AbortError"){
+      console.error(error);
+      toast("No se pudo vincular el archivo.",true);
+    }
+  }
+};
+$("openDataFile").onclick=async()=>{
+  if(!window.showOpenFilePicker){
+    toast("Este navegador no permite abrir archivos directamente. Usa Restaurar copia.",true);
+    return;
+  }
+  try{
+    const [handle]=await window.showOpenFilePicker({
+      multiple:false,
+      types:[{description:"Datos del inventario",accept:{"application/json":[".json"]}}]
+    });
+    const loaded=await readLinkedFile(handle);
+    if(!loaded)throw new Error("Archivo vacío o sin permiso");
+    if(confirm("Los datos del archivo sustituirán los actuales. ¿Continuar?")){
+      await idbSet("previous",db);
+      linkedFileHandle=handle;
+      await idbSet("fileHandle",handle);
+      db=loaded;dataLoaded=true;lastSavedJSON="";
+      await saveDatabase();
+      renderAll();
+      toast("Archivo de datos abierto y vinculado.");
+    }
+  }catch(error){
+    if(error?.name!=="AbortError"){
+      console.error(error);
+      toast("No se pudo abrir el archivo de datos.",true);
+    }
+  }
+};
+
+$("exportInventory").onclick=()=>csv(`inventario_${todayISO()}.csv`,["Orden","Código","Producto","Marca","Inicial","Entradas","Salidas","Stock","Mínimo","Valor"],orderedProducts().map(p=>[p.order,p.code,p.name,p.brand||"",p.initial,purchasedByCode(p.code),soldByCode(p.code),stockByCode(p.code),p.min,stockValue(p.code)]));
+$("exportPurchases").onclick=()=>csv(`compras_${todayISO()}.csv`,["Fecha","Código","Lote","Producto","Marca","Moneda","Cantidad","Coste unitario","Total","Nota"],db.purchases.map(p=>[p.date,p.code,p.subcode,productByCode(p.code)?.name||p.productName,p.brand||"",p.currency,p.qty,p.cost,p.total,p.note]));
+$("exportSales").onclick=()=>csv(`ventas_${todayISO()}.csv`,["Fecha","Código","Lote","Producto","Marca","Moneda","Cantidad","Precio","Total","Coste total","Ganancia","% ganancia","Nota","Cliente","Cobro"],db.sales.map(s=>[s.date,s.code,s.subcode||"Sin lote",productByCode(s.code)?.name||s.productName,s.brand||"",s.currency,s.qty,s.price,s.total,s.costTotal,s.profit,s.profitPercent,s.note,s.customer||"",s.paid===false?"Pendiente":"Cobrada"]));
+$("exportWallet").onclick=()=>{
+  const rows=[
+    ...db.wallet.map(w=>[w.date,w.type,w.currency,w.amount,w.note]),
+    ...db.purchases.map(p=>[p.date,"salida automática",p.currency,p.total,`Compra ${p.code} · ${p.subcode} · ${productByCode(p.code)?.name||p.productName||""}`]),
+    ...(db.settings?.salesToWallet?db.sales.filter(s=>s.paid!==false).map(s=>[s.date,"entrada automática",s.currency,s.total,`Venta ${s.code} · ${s.subcode||"Sin lote"}`]):[])
+  ].sort((a,b)=>String(b[0]).localeCompare(String(a[0])));
+  csv(`billetera_${todayISO()}.csv`,["Fecha","Tipo","Moneda","Importe","Nota"],rows);
+};
+$("clearAll").onclick=async()=>{
+  if(confirm("¿Borrar todos los datos?")&&confirm("Confirmación final: esta acción no se puede deshacer.")){
+    db={products:[],purchases:[],sales:[],wallet:[]};dataLoaded=true;await saveDatabase();renderAll();toast("Todos los datos fueron borrados.");
+  }
+};
+
+document.querySelectorAll(".nav-btn").forEach(btn=>btn.onclick=()=>{
+  document.querySelectorAll(".nav-btn,.view").forEach(x=>x.classList.remove("active"));
+  btn.classList.add("active");$(`view-${btn.dataset.view}`).classList.add("active");
+  const titles={
+    resumen:["Resumen","Situación general del negocio."],inventario:["Inventario","Productos, orden y existencias."],
+    compras:["Compras","Entradas de mercancía por lote."],ventas:["Ventas","Salidas, costes y ganancias."],
+    lotes:["Lotes","Existencias por subcódigo."],billetera:["Billetera","Saldos manuales y compras descontadas automáticamente."],
+    cierre:["Cierre mensual","Resultados del mes."],datos:["Copias y datos","Respaldo y exportación."]
+  };
+  $("pageTitle").textContent=titles[btn.dataset.view][0];$("pageSubtitle").textContent=titles[btn.dataset.view][1];
+});
+
+$("cancelProductEdit").onclick=resetProductForm;
+$("cancelPurchaseEdit").onclick=resetPurchaseForm;
+$("cancelSaleEdit").onclick=resetSaleForm;
+$("cancelWalletEdit").onclick=resetWalletForm;
+
+["inventorySearch"].forEach(id=>$(id).addEventListener("input",renderInventory));
+["purchaseSearch","purchaseMonth"].forEach(id=>$(id).addEventListener("input",renderPurchases));
+["saleSearch","saleMonth"].forEach(id=>$(id).addEventListener("input",renderSales));
+$("lotSearch").addEventListener("input",renderLots);
+["walletSearch","walletMonth"].forEach(id=>$(id).addEventListener("input",renderWallet));
+$("closeMonth").addEventListener("input",renderClose);
+
+["purchaseCode","purchaseQuantity","purchaseUnitCost"].forEach(id=>$(id).addEventListener("input",updatePurchasePreview));
+$("saleCode").addEventListener("input",()=>{updateSaleLots();updateSalePreview()});
+$("saleSubcode").addEventListener("change",updateSalePreview);
+["saleQuantity","saleUnitPrice","saleUnitCost"].forEach(id=>$(id).addEventListener("input",updateSalePreview));
+
+window.addEventListener("beforeunload",()=>{void saveDatabase()});
+document.addEventListener("visibilitychange",()=>{if(document.hidden)void saveDatabase()});
+setInterval(()=>{void saveDatabase()},30000);
+
+async function startApp(){
+  try{
+    db=await loadDatabase();dataLoaded=true;
+    try{navigator.storage?.persist?.()}catch(_){}
+  }catch(error){
+    console.error(error);updateSaveStatus("Sin acceso a datos",true);
+    showAlert("No se pudo abrir la base de datos ("+escapeHtml(error.message||error)+"). Tus datos NO se han borrado y no se guardará nada hasta que cargue bien. Cierra otras pestañas de esta app y recarga; si sigue igual, usa «Restaurar copia».",true);
+    return;
+  }
+  $("todayLabel").textContent=new Intl.DateTimeFormat("es-ES",{day:"numeric",month:"long",year:"numeric"}).format(new Date());
+  $("purchaseDate").value=todayISO();$("saleDate").value=todayISO();$("walletDate").value=todayISO();$("closeMonth").value=currentMonth();
+  renderAll();void renderSnapshots();updateSaveStatus("Listo");
+  try{
+    if(linkedFileHandle){
+      updateDataFileStatus("Archivo de datos vinculado.");
+      if(await linkedFileHandle.queryPermission({mode:"readwrite"})!=="granted")showAlert('El archivo vinculado necesita permiso para seguir guardando. <button class="btn primary" onclick="reconnectFile()">Reconectar</button>');
+    }else if(hasData(db)){
+      let last=0;try{last=num(localStorage.getItem("ci_lastBackup"))}catch(_){}
+      const days=last?Math.floor((Date.now()-last)/864e5):null;
+      if(days===null||days>=7)showAlert("⚠️ "+(days===null?"Aún no has descargado ninguna copia.":`Hace ${days} días que no descargas una copia.`)+" Ve a «Copias y datos» → «Descargar copia». Si borras los datos del sitio en el navegador, la información se pierde.");
+    }
+  }catch(_){}
+}
+$("purchaseBrand").addEventListener("input",()=>{$("purchaseBrand").dataset.touched="1"});
+$("salesToWallet").onchange=async e=>{db.settings={...db.settings,salesToWallet:e.target.checked};await saveDatabase();renderAll()};
+if(!window.showSaveFilePicker){["linkDataFile","openDataFile","reconnectBtn"].forEach(id=>$(id).classList.add("hidden"));$("dataFileStatus").textContent="Aquí los datos se guardan en el navegador del dispositivo. Descarga una copia con frecuencia."}
+startApp();
+if("serviceWorker"in navigator&&location.protocol.startsWith("http"))navigator.serviceWorker.register("sw.js").catch(()=>{});
+</script>
+</body>
+</html>
