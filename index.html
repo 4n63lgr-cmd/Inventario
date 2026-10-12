@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Control de Inventario</title>
-<meta name="theme-color" content="#101828">
+<meta name="theme-color" content="#0b2a2a">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
@@ -74,6 +74,12 @@ th{background:#f8fafc;color:#475467;text-transform:uppercase;font-size:11px;lett
   .head,.topbar,.filters{align-items:stretch;flex-direction:column}.search{min-width:0}
   nav{grid-template-columns:1fr 1fr}
 }
+
+:root{--bg:#eef3f1;--primary:#0f766e;--nav:#0b2a2a}
+.sidebar{background:linear-gradient(180deg,#0b2a2a,#134e4a)}
+.nav-btn.active{background:rgba(255,255,255,.16);color:#fff}
+.card,.panel{box-shadow:0 1px 3px rgba(16,24,40,.07);border-radius:16px}
+.card b{color:var(--primary)}
 </style>
 </head>
 <body>
@@ -87,6 +93,9 @@ th{background:#f8fafc;color:#475467;text-transform:uppercase;font-size:11px;lett
     <button class="nav-btn" data-view="ventas">Ventas</button>
     <button class="nav-btn" data-view="lotes">Lotes</button>
     <button class="nav-btn" data-view="billetera">Billetera</button>
+    <button class="nav-btn" data-view="gastos">Gastos</button>
+    <button class="nav-btn" data-view="clientes">Clientes</button>
+    <button class="nav-btn" data-view="conteo">Conteo físico</button>
     <button class="nav-btn" data-view="cierre">Cierre mensual</button>
     <button class="nav-btn" data-view="datos">Copias y datos</button>
   </nav>
@@ -114,6 +123,11 @@ th{background:#f8fafc;color:#475467;text-transform:uppercase;font-size:11px;lett
   <div class="two">
     <div class="panel"><h2>Por cobrar</h2><p>Ventas fiadas pendientes.</p><div id="receivables" class="empty">Nada pendiente.</div></div>
     <div class="panel"><h2>Reposición y rotación</h2><p>Según tus ventas de los últimos 30 días.</p><div id="insights" class="empty">Todo en orden.</div></div>
+  </div>
+  <div class="panel"><h2>Resultado del mes (equivalente en CUP)</h2><div class="grid"><label>Tasa: CUP por 1 USD<input id="rateInput" type="number" min="0" step="0.01" placeholder="Ej. 120"></label></div><div id="netKpis" class="cards" style="margin-top:12px"></div><h3 style="margin:16px 0 4px">Ganancia neta, últimos 6 meses</h3><div id="chartMonths"></div></div>
+  <div class="two">
+    <div class="panel"><h2>Ventas, últimos 14 días</h2><div id="chartDays"></div></div>
+    <div class="panel"><h2>Más vendidos (30 días)</h2><div id="chartTop"></div></div>
   </div>
 </section>
 
@@ -146,7 +160,7 @@ th{background:#f8fafc;color:#475467;text-transform:uppercase;font-size:11px;lett
     <form id="purchaseForm" class="grid">
       <input id="purchaseEditId" type="hidden">
       <label>Código<input id="purchaseCode" list="productCodeList" maxlength="30" required placeholder="Escribe o selecciona"><datalist id="productCodeList"></datalist></label>
-      <label>Subcódigo / lote<input id="purchaseSubcode" maxlength="50" required placeholder="A1-001"></label>
+      <label>Subcódigo / lote<input id="purchaseSubcode" maxlength="50" required placeholder="Se genera solo"></label>
       <label>Fecha<input id="purchaseDate" type="date" required></label>
       <label>Moneda<select id="purchaseCurrency" required><option>CUP CASH</option><option>USD CASH</option><option>TRANSFERENCIA</option></select></label>
       <label class="span2">Producto<input id="purchaseProduct" readonly></label>
@@ -187,7 +201,7 @@ th{background:#f8fafc;color:#475467;text-transform:uppercase;font-size:11px;lett
       <label>Coste total<input id="saleCostTotal" readonly></label>
       <label>Ganancia<input id="saleProfit" readonly></label>
       <label>% ganancia<input id="saleProfitPercent" readonly></label>
-      <label>Cliente<input id="saleCustomer" maxlength="80" placeholder="Opcional"></label>
+      <label>Cliente<input id="saleCustomer" list="customerList" maxlength="80" placeholder="Opcional"><datalist id="customerList"></datalist></label>
       <label>Cobro<select id="salePaid"><option value="1">Cobrada</option><option value="0">Pendiente (fiado)</option></select></label>
       <label class="span2">Nota<input id="saleNote" maxlength="250" placeholder="Opcional"></label>
       <div class="actions"><button id="saleSubmit" class="btn primary">Registrar venta</button><button id="cancelSaleEdit" type="button" class="btn secondary hidden">Cancelar</button></div>
@@ -262,6 +276,20 @@ th{background:#f8fafc;color:#475467;text-transform:uppercase;font-size:11px;lett
   </div>
 </section>
 
+<section id="view-gastos" class="view">
+  <div class="panel"><h2>Nuevo gasto</h2><p>Transporte, embalaje, alquiler... Se descuentan de la billetera y de la ganancia neta.</p>
+  <form id="expenseForm" class="grid">
+    <label>Fecha<input id="expDate" type="date" required></label>
+    <label>Categoría<select id="expCat"><option>Transporte</option><option>Embalaje</option><option>Alquiler</option><option>Salarios</option><option>Comisiones</option><option>Pérdidas / mermas</option><option>Otros</option></select></label>
+    <label>Moneda<select id="expCur"><option>CUP CASH</option><option>USD CASH</option><option>TRANSFERENCIA</option></select></label>
+    <label>Monto<input id="expAmount" type="number" min=".01" step=".01" required></label>
+    <label class="span2">Nota<input id="expNote" maxlength="200" placeholder="Opcional"></label>
+    <div style="grid-column:1/-1"><button class="btn primary" type="submit">Guardar gasto</button></div>
+  </form></div>
+  <div class="panel"><h2>Gastos registrados</h2><div class="table-wrap"><table style="min-width:640px"><thead><tr><th>Fecha</th><th>Categoría</th><th>Moneda</th><th>Monto</th><th>Nota</th><th></th></tr></thead><tbody id="expBody"></tbody></table></div></div>
+</section>
+<section id="view-clientes" class="view"><div class="panel"><h2>Clientes</h2><p>Se arma sola con el campo «Cliente» de tus ventas.</p><div class="table-wrap"><table style="min-width:680px"><thead><tr><th>Cliente</th><th>Ventas</th><th>Total comprado</th><th>Pendiente</th><th></th></tr></thead><tbody id="custBody"></tbody></table></div></div></section>
+<section id="view-conteo" class="view"><div class="panel"><h2>Conteo físico</h2><p>Escribe lo que realmente cuentas. Al aplicar, el stock se ajusta y queda registrado.</p><div class="table-wrap"><table style="min-width:620px"><thead><tr><th>Código</th><th>Producto</th><th>Sistema</th><th>Contado</th><th>Diferencia</th></tr></thead><tbody id="countBody"></tbody></table></div><div style="margin-top:12px"><button id="countApply" class="btn primary" type="button">Aplicar ajustes</button></div></div><div class="panel"><h2>Ajustes recientes</h2><div id="adjList" class="empty">Sin ajustes.</div></div></section>
 <section id="view-datos" class="view">
   <div class="two">
     <div class="panel"><h2>Datos y copias</h2><p>Guarda una copia manual o vincula un archivo de datos del ordenador.</p><div class="stack">
@@ -339,7 +367,9 @@ function normalizeDatabase(source){
     currency:w.currency||"CUP CASH",date:w.date||todayISO(),
     amount:num(w.amount),note:w.note||"",created:w.created||w.createdAt||Date.now()
   }));
-  return {products,purchases,sales,wallet,settings:{salesToWallet:!!parsed.settings?.salesToWallet}};
+  const expenses=(parsed.expenses||[]).map(e=>({id:e.id||uid(),date:e.date||todayISO(),category:e.category||"Otros",currency:e.currency||"CUP CASH",amount:round2(e.amount),note:e.note||"",created:e.created||Date.now()}));
+  const adjustments=(parsed.adjustments||[]).map(a=>({id:a.id||uid(),date:a.date||todayISO(),code:a.code||"",diff:num(a.diff),note:a.note||""}));
+  return {products,purchases,sales,wallet,expenses,adjustments,settings:{salesToWallet:!!parsed.settings?.salesToWallet,rate:num(parsed.settings?.rate)}};
 }
 
 const IDB_NAME="ControlInventarioDB";
@@ -531,7 +561,8 @@ function monthMatches(date,month){return !month||String(date||"").startsWith(mon
 function manualWalletBalance(currency){return round2(db.wallet.filter(w=>w.currency===currency).reduce((s,w)=>s+(w.type==="entrada"?num(w.amount):-num(w.amount)),0))}
 function purchaseSpend(currency){return round2(db.purchases.filter(p=>p.currency===currency).reduce((s,p)=>s+num(p.total),0))}
 const salesIncome=c=>db.settings?.salesToWallet?round2(db.sales.filter(s=>s.currency===c&&s.paid!==false).reduce((t,s)=>t+num(s.total),0)):0;
-function walletBalance(currency){return round2(manualWalletBalance(currency)-purchaseSpend(currency)+salesIncome(currency))}
+const expenseSpend=c=>round2((db.expenses||[]).filter(e=>e.currency===c).reduce((t,e)=>t+num(e.amount),0));
+function walletBalance(currency){return round2(manualWalletBalance(currency)-purchaseSpend(currency)+salesIncome(currency)-expenseSpend(currency))}
 
 
 function auditDatabase(){
@@ -560,10 +591,11 @@ function auditDatabase(){
 }
 
 function renderAll(){
+  db.expenses=db.expenses||[];db.adjustments=db.adjustments||[];db.settings=db.settings||{};
   const issues=auditDatabase();
   if(issues.length)console.warn("Comprobación de datos:",issues);
   renderProductList();
-  renderSummary();renderInsights();
+  renderSummary();renderInsights();renderExpenses();renderCustomers();renderCount();renderCharts();
   renderInventory();
   renderPurchases();
   renderSales();
@@ -724,14 +756,15 @@ function renderWallet(){
     created:p.created,automatic:true,purchaseId:p.id
   }));
   const autoSales=db.settings?.salesToWallet?db.sales.filter(s=>s.paid!==false).map(s=>({id:"sale:"+s.id,type:"entrada",currency:s.currency,date:s.date,amount:s.total,note:`Venta ${s.code} · ${s.subcode||"Sin lote"} · ${s.productName||""}`,created:s.created,automatic:true})):[];
-  const rows=[...manual,...automatic,...autoSales]
+  const autoExp=(db.expenses||[]).map(e=>({id:"exp:"+e.id,type:"salida",currency:e.currency,date:e.date,amount:e.amount,note:"Gasto: "+e.category+(e.note?" · "+e.note:""),created:e.created,automatic:true,exp:true}));
+  const rows=[...manual,...automatic,...autoSales,...autoExp]
     .sort((a,b)=>b.date.localeCompare(a.date)||num(b.created)-num(a.created))
     .filter(w=>{
       const text=`${w.automatic?"compra automática":w.type} ${w.currency} ${w.note}`.toLowerCase();
       return (!q||text.includes(q))&&monthMatches(w.date,month);
     });
   $("walletBody").innerHTML=rows.length?rows.map(w=>`<tr>
-    <td>${formatDate(w.date)}</td><td><span class="badge ${w.type==="entrada"?"ok":"bad"}">${w.automatic?(w.type==="entrada"?"Venta automática":"Compra automática"):w.type==="entrada"?"Entrada":"Salida"}</span></td>
+    <td>${formatDate(w.date)}</td><td><span class="badge ${w.type==="entrada"?"ok":"bad"}">${w.automatic?(w.type==="entrada"?"Venta automática":w.exp?"Gasto automático":"Compra automática"):w.type==="entrada"?"Entrada":"Salida"}</span></td>
     <td>${escapeHtml(w.currency)}</td><td class="${w.type==="salida"?"negative":""}"><b>${w.type==="salida"?"−":"+"}${formatMoney(w.amount)}</b></td>
     <td class="note">${escapeHtml(w.note||"")}</td>
     <td>${w.automatic?'<span class="badge warn">Automático</span>':`<button class="btn secondary" onclick="editWallet('${w.id}')">Editar</button> <button class="btn danger" onclick="deleteWallet('${w.id}')">Eliminar</button>`}</td>
@@ -753,6 +786,47 @@ function renderInsights(){
     else if(stock>0&&!db.sales.some(s=>s.code===p.code&&s.date>=d60)&&db.purchases.some(x=>x.code===p.code&&x.date<d60))items.push(row(label,"Sin ventas en 60 días","bad"));
   });
   $("insights").className=items.length?"":"empty";$("insights").innerHTML=items.length?items.slice(0,10).join(""):"Todo en orden.";
+}
+const RATE=()=>num(db.settings?.rate),toCUP=(a,c)=>c==="USD CASH"?num(a)*RATE():num(a);
+function bars(items,fmt){
+  const max=Math.max(1,...items.map(i=>Math.abs(i.v)));
+  return `<div style="display:flex;align-items:flex-end;gap:4px;height:160px">${items.map(i=>`<div style="flex:1;min-width:0;height:100%;display:flex;flex-direction:column;justify-content:flex-end;text-align:center"><small style="font-size:9px;color:var(--muted)">${i.v?fmt(i.v):""}</small><div title="${i.l}: ${fmt(i.v)}" style="height:${Math.max(2,Math.abs(i.v)/max*72)}%;background:${i.v<0?"var(--bad)":"var(--primary)"};border-radius:6px 6px 0 0"></div><small style="font-size:10px;color:var(--muted)">${i.l}</small></div>`).join("")}</div>`;
+}
+function hbars(items){
+  const m=Math.max(1,...items.map(i=>i.v));
+  return items.map(i=>`<div style="margin:9px 0"><div style="display:flex;justify-content:space-between;font-size:13px"><span>${i.l}</span><b>${formatNumber(i.v)}</b></div><div style="height:8px;background:#e1ece9;border-radius:6px"><div style="height:8px;width:${i.v/m*100}%;background:var(--primary);border-radius:6px"></div></div></div>`).join("")||'<div class="empty">Aún no hay ventas.</div>';
+}
+function renderCharts(){
+  const r=RATE(),need='<div class="empty">Escribe la tasa de cambio para ver este gráfico.</div>';
+  if(document.activeElement!==$("rateInput"))$("rateInput").value=r||"";
+  const days=[];for(let i=13;i>=0;i--){const d=ago(i);days.push({l:d.slice(8),v:round2(db.sales.filter(s=>s.date===d&&s.paid!==false).reduce((t,s)=>t+toCUP(s.total,s.currency),0))})}
+  $("chartDays").innerHTML=r?bars(days,v=>formatNumber(v)):need;
+  const d30=ago(30),m={};db.sales.filter(s=>s.date>=d30).forEach(s=>m[s.code]=(m[s.code]||0)+num(s.qty));
+  $("chartTop").innerHTML=hbars(Object.entries(m).sort((a,b)=>b[1]-a[1]).slice(0,6).map(([c,v])=>({l:escapeHtml(c+" "+(productByCode(c)?.name||"")),v})));
+  const net=k=>round2(db.sales.filter(s=>s.date.startsWith(k)).reduce((t,s)=>t+toCUP(s.profit,s.currency),0)-db.expenses.filter(e=>e.date.startsWith(k)).reduce((t,e)=>t+toCUP(e.amount,e.currency),0));
+  const mons=[];for(let i=5;i>=0;i--){const d=new Date();d.setDate(1);d.setMonth(d.getMonth()-i);const k=`${d.getFullYear()}-${pad(d.getMonth()+1)}`;mons.push({l:pad(d.getMonth()+1),v:net(k)})}
+  $("chartMonths").innerHTML=r?bars(mons,v=>formatNumber(v)):need;
+  const k=currentMonth(),ms=db.sales.filter(s=>s.date.startsWith(k)),sum=(a,f)=>round2(a.reduce((t,x)=>t+f(x),0));
+  const kp=[["Ventas",sum(ms,s=>toCUP(s.total,s.currency))],["Ganancia bruta",sum(ms,s=>toCUP(s.profit,s.currency))],["Gastos",sum(db.expenses.filter(e=>e.date.startsWith(k)),e=>toCUP(e.amount,e.currency))],["Ganancia neta",net(k)]];
+  $("netKpis").innerHTML=r?kp.map(([a,b])=>`<div class="card"><span>${a}</span><b>${formatMoney(b)}</b></div>`).join(""):need;
+}
+function renderExpenses(){
+  const rows=db.expenses.slice().sort((a,b)=>b.date.localeCompare(a.date)||b.created-a.created);
+  $("expBody").innerHTML=rows.length?rows.map(e=>`<tr><td>${formatDate(e.date)}</td><td>${escapeHtml(e.category)}</td><td>${escapeHtml(e.currency)}</td><td>${formatMoney(e.amount)}</td><td class="note">${escapeHtml(e.note)}</td><td><button class="btn secondary" onclick="delExpense('${e.id}')">Eliminar</button></td></tr>`).join(""):emptyRow(6,"No hay gastos.");
+}
+window.delExpense=async id=>{if(!confirm("¿Eliminar este gasto?"))return;db.expenses=db.expenses.filter(e=>e.id!==id);await saveDatabase();renderAll()};
+function renderCustomers(){
+  const m={};db.sales.forEach(s=>{const n=(s.customer||"").trim()||"Sin nombre",o=m[n]=m[n]||{n,c:0,t:{},p:{}};o.c++;o.t[s.currency]=(o.t[s.currency]||0)+num(s.total);if(s.paid===false)o.p[s.currency]=(o.p[s.currency]||0)+num(s.total)});
+  const txt=o=>Object.entries(o).map(([c,v])=>`${formatMoney(v)} ${c.split(" ")[0]}`).join(" · ")||"—",rows=Object.values(m).sort((a,b)=>b.c-a.c);
+  $("custBody").innerHTML=rows.length?rows.map(o=>{const debt=Object.keys(o.p).length;return `<tr><td><b>${escapeHtml(o.n)}</b></td><td>${o.c}</td><td>${txt(o.t)}</td><td>${debt?`<span class="badge bad">${txt(o.p)}</span>`:`<span class="badge ok">Al día</span>`}</td><td>${debt?`<button class="btn secondary" data-n="${escapeHtml(o.n)}" onclick="collectCustomer(this.dataset.n)">Cobrar todo</button>`:""}</td></tr>`}).join(""):emptyRow(5,"Aún no hay ventas.");
+  $("customerList").innerHTML=rows.filter(o=>o.n!=="Sin nombre").map(o=>`<option value="${escapeHtml(o.n)}">`).join("");
+}
+window.collectCustomer=async n=>{if(!confirm("¿Marcar como cobradas todas las ventas pendientes de "+n+"?"))return;db.sales.forEach(s=>{if(s.paid===false&&((s.customer||"").trim()||"Sin nombre")===n)s.paid=true});await saveDatabase();renderAll();toast("Ventas cobradas.")};
+function renderCount(){
+  $("countBody").innerHTML=orderedProducts().map(p=>{const s=stockByCode(p.code);return `<tr><td><b>${escapeHtml(p.code)}</b></td><td>${escapeHtml(p.name)}${p.brand?" · "+escapeHtml(p.brand):""}</td><td>${formatNumber(s)}</td><td><input type="number" step="any" min="0" data-count="${escapeHtml(p.code)}" data-sys="${s}" style="width:90px"></td><td data-diff="${escapeHtml(p.code)}">—</td></tr>`}).join("")||emptyRow(5,"No hay productos.");
+  const adj=db.adjustments.slice().sort((a,b)=>b.date.localeCompare(a.date)).slice(0,10);
+  $("adjList").className=adj.length?"":"empty";
+  $("adjList").innerHTML=adj.length?adj.map(a=>`<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #eee"><span>${formatDate(a.date)} · <b>${escapeHtml(a.code)}</b></span><span class="badge ${a.diff<0?"bad":"ok"}">${a.diff>0?"+":""}${formatNumber(a.diff)}</span></div>`).join(""):"Sin ajustes.";
 }
 function renderClose(){
   const month=$("closeMonth").value||currentMonth();
@@ -788,7 +862,15 @@ function renderClose(){
   </tr>`).join(""):emptyRow(9,"No hay movimientos en ese mes.");
 }
 
+function autoLot(){
+  const s=$("purchaseSubcode");if(s.dataset.touched||$("purchaseEditId").value)return;
+  const c=normalizeCode($("purchaseCode").value),d=$("purchaseDate").value;
+  if(!c||!d){s.value="";return}
+  const n=db.purchases.filter(p=>p.code===c&&p.date===d).length,base=`${c}-${d.slice(2,4)}${d.slice(5,7)}${d.slice(8,10)}`;
+  s.value=n?`${base}-${n+1}`:base;
+}
 function updatePurchasePreview(){
+  autoLot();
   const c=normalizeCode($("purchaseCode").value);if($("purchaseCode").value!==c)$("purchaseCode").value=c;
   $("purchaseProduct").value=productByCode(c)?.name||"";
   if(!$("purchaseBrand").dataset.touched)$("purchaseBrand").value=productByCode(c)?.brand||"";
@@ -866,7 +948,7 @@ $("purchaseForm").onsubmit=async e=>{
   if(!await saveDatabase())return;resetPurchaseForm();renderAll();toast(old?"Compra actualizada.":"Compra registrada.");
 };
 function resetPurchaseForm(){
-  $("purchaseForm").reset();delete $("purchaseBrand").dataset.touched;$("purchaseEditId").value="";$("purchaseDate").value=todayISO();$("purchaseCurrency").value="CUP CASH";
+  $("purchaseForm").reset();delete $("purchaseBrand").dataset.touched;delete $("purchaseSubcode").dataset.touched;$("purchaseEditId").value="";$("purchaseDate").value=todayISO();$("purchaseCurrency").value="CUP CASH";
   $("purchaseFormTitle").textContent="Nueva compra";$("purchaseSubmit").textContent="Registrar compra";
   $("purchaseEditBanner").classList.add("hidden");$("cancelPurchaseEdit").classList.add("hidden");
 }
@@ -1079,7 +1161,7 @@ async function startApp(){
     return;
   }
   $("todayLabel").textContent=new Intl.DateTimeFormat("es-ES",{day:"numeric",month:"long",year:"numeric"}).format(new Date());
-  $("purchaseDate").value=todayISO();$("saleDate").value=todayISO();$("walletDate").value=todayISO();$("closeMonth").value=currentMonth();
+  $("purchaseDate").value=todayISO();$("saleDate").value=todayISO();$("walletDate").value=todayISO();$("expDate").value=todayISO();$("closeMonth").value=currentMonth();
   renderAll();void renderSnapshots();updateSaveStatus("Listo");
   try{
     if(linkedFileHandle){
@@ -1095,6 +1177,12 @@ async function startApp(){
 $("purchaseBrand").addEventListener("input",()=>{$("purchaseBrand").dataset.touched="1"});
 $("salesToWallet").onchange=async e=>{db.settings={...db.settings,salesToWallet:e.target.checked};await saveDatabase();renderAll()};
 if(!window.showSaveFilePicker){["linkDataFile","openDataFile","reconnectBtn"].forEach(id=>$(id).classList.add("hidden"));$("dataFileStatus").textContent="Aquí los datos se guardan en el navegador del dispositivo. Descarga una copia con frecuencia."}
+["purchaseCode","purchaseDate"].forEach(id=>$(id).addEventListener("input",updatePurchasePreview));
+$("purchaseSubcode").addEventListener("input",e=>{if(e.target.value)e.target.dataset.touched="1";else delete e.target.dataset.touched});
+$("rateInput").onchange=async e=>{db.settings={...db.settings,rate:num(e.target.value)};await saveDatabase();renderAll()};
+$("expenseForm").onsubmit=async e=>{e.preventDefault();db.expenses.push({id:uid(),date:$("expDate").value,category:$("expCat").value,currency:$("expCur").value,amount:round2($("expAmount").value),note:clean($("expNote").value),created:Date.now()});if(!await saveDatabase())return;$("expenseForm").reset();$("expDate").value=todayISO();renderAll();toast("Gasto guardado.")};
+$("countBody").addEventListener("input",e=>{const i=e.target;if(!i.dataset.count)return;const d=i.value===""?null:round2(num(i.value)-num(i.dataset.sys)),c=document.querySelector(`[data-diff="${CSS.escape(i.dataset.count)}"]`);c.textContent=d===null?"—":(d>0?"+":"")+formatNumber(d);c.style.color=d<0?"var(--bad)":""});
+$("countApply").onclick=async()=>{const ch=[...document.querySelectorAll("[data-count]")].filter(i=>i.value!==""&&round2(num(i.value))!==round2(num(i.dataset.sys)));if(!ch.length)return toast("No hay diferencias que aplicar.");if(!confirm("Se ajustará el stock de "+ch.length+" producto(s). ¿Continuar?"))return;ch.forEach(i=>{const p=productByCode(i.dataset.count),diff=round2(num(i.value)-num(i.dataset.sys));p.initial=round2(num(p.initial)+diff);db.adjustments.push({id:uid(),date:todayISO(),code:p.code,diff,note:"Conteo físico"})});await saveDatabase();renderAll();toast("Stock ajustado.")};
 startApp();
 if("serviceWorker"in navigator&&location.protocol.startsWith("http"))navigator.serviceWorker.register("sw.js").catch(()=>{});
 </script>
