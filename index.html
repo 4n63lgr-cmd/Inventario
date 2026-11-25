@@ -89,6 +89,15 @@ input:focus,select:focus{border-color:var(--accent);box-shadow:0 0 0 3px #fd7702
 .toast{background:#151517}.toast.err{background:var(--bad)}
 .badge.warn{background:#fff0dc;color:#9a4a00}
 .order-number{background:#efece8}
+/* Ganancia del año */
+.year-tiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:14px}
+@media(min-width:781px){.year-tiles{grid-template-columns:repeat(6,minmax(0,1fr))}}
+.ytile{border:1px solid var(--line);border-radius:12px;padding:10px;display:grid;gap:2px;position:relative;min-width:0}
+.ytile b{font-size:15px;overflow:hidden;text-overflow:ellipsis}.ytile small{color:var(--muted);font-size:11px}
+.ytile.best{border:2px solid var(--accent);padding:9px}
+.ytile.none{opacity:.55}
+.ydot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px}
+.ystar{position:absolute;top:6px;right:8px;font-size:11px;font-weight:800;color:var(--primary)}
 /* Deudas */
 .debtor{border:1px solid var(--line);border-radius:14px;background:#fff;margin-bottom:10px}
 .debtor[open]{border-color:var(--accent)}
@@ -156,6 +165,14 @@ input:focus,select:focus{border-color:var(--accent);box-shadow:0 0 0 3px #fd7702
     <h3 style="margin:14px 0 4px;font-size:14px">Con cuánto terminaste cada mes</h3><div id="flowBalance"></div>
     <h3 style="margin:16px 0 4px;font-size:14px">Entró y salió <span style="font-weight:500;color:var(--muted)">(<span style="color:var(--ok)">■</span> entró · <span style="color:var(--bad)">■</span> salió)</span></h3><div id="flowPairs"></div>
     <div class="table-wrap" style="margin-top:14px"><table style="min-width:470px"><thead><tr><th>Mes</th><th>Empezó</th><th>Entró</th><th>Salió</th><th>Terminó</th></tr></thead><tbody id="flowBody"></tbody></table></div>
+  </div>
+  <div class="panel">
+    <div class="head"><div><h2>Ganancia del año</h2><p>Cuánto ganaste cada mes, después de restar los gastos. Toca el selector para cambiar de año o moneda.</p></div>
+      <div class="filters"><select id="yearProfCur"><option value="CUP CASH">CUP CASH</option><option value="USD CASH">USD CASH</option><option value="TRANSFERENCIA">TRANSFERENCIA</option><option value="ALL">Todo junto (en CUP)</option></select><select id="yearProfYear"></select></div></div>
+    <div id="yearProfSummary" class="edit-banner" style="background:#fff3e3;border-color:#f5c58a;font-weight:600;line-height:1.5"></div>
+    <div id="yearProfDonut" style="display:flex;flex-direction:column;align-items:center;gap:6px;margin-top:6px"></div>
+    <div id="yearProfTiles" class="year-tiles"></div>
+    <small style="display:block;margin-top:10px;color:var(--muted)">Ganancia = ventas menos su coste, menos los gastos. Cuenta también las ventas fiadas que aún no has cobrado.</small>
   </div>
   <div class="panel"><h2>Resultado del mes (equivalente en CUP)</h2><div class="grid"><label>Tasa: CUP por 1 USD<input id="rateInput" type="number" min="0" step="0.01" placeholder="Ej. 120"></label></div><div id="netKpis" class="cards" style="margin-top:12px"></div><h3 style="margin:16px 0 4px">Ganancia neta, últimos 6 meses</h3><div id="chartMonths"></div></div>
   <div class="two">
@@ -648,7 +665,7 @@ function renderAll(){
   const issues=auditDatabase();
   if(issues.length)console.warn("Comprobación de datos:",issues);
   renderProductList();
-  renderSummary();renderInsights();renderExpenses();renderCustomers();renderDebts();renderCount();renderCharts();renderMoneyFlow();
+  renderSummary();renderInsights();renderExpenses();renderCustomers();renderDebts();renderCount();renderCharts();renderMoneyFlow();renderYearProfit();
   renderInventory();
   renderPurchases();
   renderSales();
@@ -1392,6 +1409,67 @@ function renderMoneyFlow(){
   $("flowBody").innerHTML=rows.slice().reverse().map(r=>`<tr><td><b>${r.l} ${r.y}</b></td><td>${formatMoney(r.open)}</td><td style="color:var(--ok)">+${formatMoney(r.inn)}</td><td style="color:var(--bad)">−${formatMoney(r.out)}</td><td class="${r.close<0?"negative":""}"><b>${formatMoney(r.close)}</b></td></tr>`).join("");
 }
 $("flowCur").addEventListener("change",renderMoneyFlow);
+
+/* ===== GANANCIA DEL AÑO ===== */
+const yearColor=m=>`hsl(${32-m*1.3},95%,${74-m*3.7}%)`;
+function yearProfit(cur,year){
+  const all=cur==="ALL",conv=(a,c)=>all?toCUP(a,c):num(a),rows=[];
+  for(let m=0;m<12;m++){
+    const k=`${year}-${pad(m+1)}`;
+    const ss=db.sales.filter(x=>(x.date||"").startsWith(k)&&(all||x.currency===cur));
+    const ee=(db.expenses||[]).filter(x=>(x.date||"").startsWith(k)&&(all||x.currency===cur));
+    const gross=round2(ss.reduce((t,x)=>t+conv(x.profit,x.currency),0)),exp=round2(ee.reduce((t,x)=>t+conv(x.amount,x.currency),0));
+    rows.push({m,l:MESES[m],full:MESES_LARGO[m],gross,exp,net:round2(gross-exp),has:ss.length>0||ee.length>0});
+  }
+  return rows;
+}
+function donutSVG(rows,total,year,unit){
+  const R=78,W=34,C=2*Math.PI*R,pos=rows.filter(r=>r.net>0),sum=pos.reduce((t,r)=>t+r.net,0);
+  let off=0,segs="";
+  if(sum>0)pos.forEach(r=>{const len=r.net/sum*C,gap=pos.length>1?Math.min(2.5,len*.2):0;segs+=`<circle cx="100" cy="100" r="${R}" fill="none" stroke="${yearColor(r.m)}" stroke-width="${W}" stroke-dasharray="${Math.max(0,len-gap)} ${C}" stroke-dashoffset="${-off}" transform="rotate(-90 100 100)"><title>${r.full}: ${formatMoney(r.net)}</title></circle>`;off+=len});
+  else segs=`<circle cx="100" cy="100" r="${R}" fill="none" stroke="#e9e5e0" stroke-width="${W}"/>`;
+  const t=formatNumber(total),fs=t.length>10?13:t.length>8?15:18;
+  return `<svg viewBox="0 0 200 200" role="img" aria-label="Ganancia por mes en ${year}" style="width:min(270px,72vw);height:auto">${segs}
+    <text x="100" y="92" text-anchor="middle" font-size="11" fill="var(--muted)">Ganancia ${year}</text>
+    <text x="100" y="${112+(18-fs)/2}" text-anchor="middle" font-size="${fs}" font-weight="800" fill="${total<0?"var(--bad)":"var(--text)"}">${t}</text>
+    <text x="100" y="128" text-anchor="middle" font-size="10" fill="var(--muted)">${unit}</text></svg>
+    <div style="display:flex;align-items:center;gap:8px;font-size:11px;color:var(--muted);width:min(270px,72vw)"><span>ene</span><span style="flex:1;height:7px;border-radius:5px;background:linear-gradient(90deg,${yearColor(0)},${yearColor(6)},${yearColor(11)})"></span><span>dic</span></div>`;
+}
+function renderYearProfit(){
+  const sel=$("yearProfYear"),nowY=new Date().getFullYear(),prevY=sel.value;
+  const years=new Set([nowY]);
+  db.sales.forEach(x=>{const y=+String(x.date||"").slice(0,4);if(y)years.add(y)});
+  (db.expenses||[]).forEach(x=>{const y=+String(x.date||"").slice(0,4);if(y)years.add(y)});
+  const list=[...years].sort((a,b)=>b-a);
+  sel.innerHTML=list.map(y=>`<option value="${y}">${y}</option>`).join("");
+  sel.value=list.map(String).includes(prevY)?prevY:String(nowY);
+  const year=+sel.value,cur=$("yearProfCur").value,unit=cur==="ALL"?"CUP":curShort(cur);
+  if(cur==="ALL"&&!RATE()){
+    $("yearProfSummary").textContent="Para ver todas las monedas juntas, escribe la tasa de cambio (CUP por 1 USD) en el panel «Resultado del mes» de más abajo. O elige una sola moneda arriba.";
+    $("yearProfDonut").innerHTML="";$("yearProfTiles").innerHTML="";return;
+  }
+  const rows=yearProfit(cur,year),total=round2(rows.reduce((t,r)=>t+r.net,0)),withData=rows.filter(r=>r.has);
+  if(!withData.length){
+    $("yearProfSummary").textContent=`Aún no hay ventas ni gastos en ${year} para esta moneda. Cuando registres ventas, aquí verás tu año completo.`;
+    $("yearProfDonut").innerHTML=donutSVG(rows,0,year,unit);
+    $("yearProfTiles").innerHTML=rows.map(r=>`<div class="ytile none"><span><span class="ydot" style="background:${yearColor(r.m)}"></span>${r.l}</span><b>—</b></div>`).join("");return;
+  }
+  const best=withData.reduce((a,b)=>b.net>a.net?b:a),losses=withData.filter(r=>r.net<0).length,isNow=year===nowY;
+  $("yearProfSummary").innerHTML=`En ${year} ${isNow?"llevas":"ganaste"} <b style="color:${total<0?"var(--bad)":"var(--ok)"}">${formatMoney(total)} ${unit}</b>. `+
+    (best.net>0?`Tu mejor mes ${isNow?"es":"fue"} <b>${best.full}</b> con ${formatMoney(best.net)}.`:`Ningún mes ha dejado ganancia todavía.`)+
+    (losses?` ${losses} ${losses===1?"mes cerró":"meses cerraron"} en pérdida.`:"");
+  $("yearProfDonut").innerHTML=donutSVG(rows,total,year,unit);
+  const maxPos=Math.max(0,...rows.map(r=>r.net)),sumPos=rows.filter(r=>r.net>0).reduce((t,r)=>t+r.net,0);
+  $("yearProfTiles").innerHTML=rows.map(r=>{
+    if(!r.has)return `<div class="ytile none"><span><span class="ydot" style="background:${yearColor(r.m)}"></span>${r.l}</span><b>—</b></div>`;
+    const bg=r.net>0?`rgba(253,119,2,${(.07+.33*r.net/maxPos).toFixed(2)})`:r.net<0?"rgba(180,35,24,.14)":"#f4f2ef";
+    const isBest=r===best&&r.net>0;
+    return `<div class="ytile${isBest?" best":""}" style="background:${bg}" title="Ganancia ${formatMoney(r.gross)} − gastos ${formatMoney(r.exp)}"><span><span class="ydot" style="background:${yearColor(r.m)}"></span>${r.l}${isBest?' <span style="color:var(--primary)">★</span>':""}</span>
+      <b class="${r.net<0?"negative":""}">${formatNumber(r.net)}</b>
+      <small>${r.net>0&&sumPos?(isBest?"mejor mes · ":"")+Math.round(r.net/sumPos*100)+" % del total":r.net<0?"pérdida":"sin ganancia"}</small></div>`;
+  }).join("");
+}
+["yearProfCur","yearProfYear"].forEach(id=>$(id).addEventListener("change",renderYearProfit));
 
 async function startApp(){
   try{
