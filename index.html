@@ -89,6 +89,23 @@ input:focus,select:focus{border-color:var(--accent);box-shadow:0 0 0 3px #fd7702
 .toast{background:#151517}.toast.err{background:var(--bad)}
 .badge.warn{background:#fff0dc;color:#9a4a00}
 .order-number{background:#efece8}
+/* Tamaño y modo compacto */
+.zoom-ctl{display:flex;justify-content:flex-end;align-items:center;gap:6px;margin-top:6px}
+.zoom-ctl small{color:var(--muted);font-weight:600;margin-right:2px}
+.zoom-ctl button{border:1px solid #cfc9c2;background:#fff;border-radius:8px;width:36px;height:32px;font-weight:800;font-size:16px;line-height:1;padding:0}
+.zoom-ctl span{min-width:46px;text-align:center;font-weight:700;font-size:13px}
+@media(max-width:780px){
+  .main{padding:10px}
+  .topbar{margin-bottom:12px;gap:6px}.topbar h1{font-size:22px}.zoom-ctl{justify-content:flex-start}
+  .panel{padding:14px;margin-bottom:12px}
+  .cards,.wallet-cards{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-bottom:12px}
+  .wallet-cards .card:last-child:nth-child(odd){grid-column:1/-1}
+  .card{padding:12px}.card span{margin-bottom:4px}.card b{font-size:19px}
+  .grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+  .span2{grid-column:1/-1}
+  th,td{padding:8px 9px}
+  .head{gap:8px;margin-bottom:10px}
+}
 /* Ganancia del año */
 .year-tiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:14px}
 @media(min-width:781px){.year-tiles{grid-template-columns:repeat(6,minmax(0,1fr))}}
@@ -140,7 +157,7 @@ input:focus,select:focus{border-color:var(--accent);box-shadow:0 0 0 3px #fd7702
 <div id="alertBar" class="edit-banner hidden"></div>
 <header class="topbar">
   <div><h1 id="pageTitle">Resumen</h1><p id="pageSubtitle">Situación general del negocio.</p></div>
-  <div style="text-align:right"><b id="todayLabel"></b></div>
+  <div style="text-align:right"><b id="todayLabel"></b><div class="zoom-ctl"><small>Tamaño</small><button id="zoomOut" type="button" aria-label="Alejar">−</button><span id="zoomVal">100 %</span><button id="zoomIn" type="button" aria-label="Acercar">+</button></div></div>
 </header>
 
 <section id="view-resumen" class="view active">
@@ -167,12 +184,12 @@ input:focus,select:focus{border-color:var(--accent);box-shadow:0 0 0 3px #fd7702
     <div class="table-wrap" style="margin-top:14px"><table style="min-width:470px"><thead><tr><th>Mes</th><th>Empezó</th><th>Entró</th><th>Salió</th><th>Terminó</th></tr></thead><tbody id="flowBody"></tbody></table></div>
   </div>
   <div class="panel">
-    <div class="head"><div><h2>Ganancia del año</h2><p>Cuánto ganaste cada mes, después de restar los gastos. Toca el selector para cambiar de año o moneda.</p></div>
-      <div class="filters"><select id="yearProfCur"><option value="CUP CASH">CUP CASH</option><option value="USD CASH">USD CASH</option><option value="TRANSFERENCIA">TRANSFERENCIA</option><option value="ALL">Todo junto (en CUP)</option></select><select id="yearProfYear"></select></div></div>
+    <div class="head"><div><h2>Ganancia del año</h2><p>Cuánto ganaste cada mes. Puedes cambiar de año, de moneda y elegir si restar o no los gastos.</p></div>
+      <div class="filters"><select id="yearProfCur"><option value="CUP CASH">CUP CASH</option><option value="USD CASH">USD CASH</option><option value="TRANSFERENCIA">TRANSFERENCIA</option><option value="ALL">Todo junto (en CUP)</option></select><select id="yearProfYear"></select><select id="yearProfMode"><option value="gross">Ganancia de ventas</option><option value="net">Después de gastos</option></select></div></div>
     <div id="yearProfSummary" class="edit-banner" style="background:#fff3e3;border-color:#f5c58a;font-weight:600;line-height:1.5"></div>
     <div id="yearProfDonut" style="display:flex;flex-direction:column;align-items:center;gap:6px;margin-top:6px"></div>
     <div id="yearProfTiles" class="year-tiles"></div>
-    <small style="display:block;margin-top:10px;color:var(--muted)">Ganancia = ventas menos su coste, menos los gastos. Cuenta también las ventas fiadas que aún no has cobrado.</small>
+    <small style="display:block;margin-top:10px;color:var(--muted)">«Ganancia de ventas» es ventas menos su coste: la misma cifra del Cierre mensual (en su tabla por moneda). «Después de gastos» además resta tus gastos. Cuenta también las ventas fiadas que aún no has cobrado.</small>
   </div>
   <div class="panel"><h2>Resultado del mes (equivalente en CUP)</h2><div class="grid"><label>Tasa: CUP por 1 USD<input id="rateInput" type="number" min="0" step="0.01" placeholder="Ej. 120"></label></div><div id="netKpis" class="cards" style="margin-top:12px"></div><h3 style="margin:16px 0 4px">Ganancia neta, últimos 6 meses</h3><div id="chartMonths"></div></div>
   <div class="two">
@@ -331,12 +348,14 @@ input:focus,select:focus{border-color:var(--accent);box-shadow:0 0 0 3px #fd7702
       <div class="card"><span>Total vendido</span><b id="closeSales">0,00</b></div>
       <div class="card"><span>Total comprado</span><b id="closePurchases">0,00</b></div>
       <div class="card"><span>Coste vendido</span><b id="closeCost">0,00</b></div>
-      <div class="card"><span>Ganancia</span><b id="closeProfit">0,00</b></div>
+      <div class="card"><span>Ganancia de ventas</span><b id="closeProfit">0,00</b></div>
       <div class="card"><span>% ganancia</span><b id="closeProfitPercent">0,00 %</b></div>
       <div class="card"><span>Unidades vendidas</span><b id="closeUnits">0</b></div>
+      <div class="card"><span>Gastos del mes</span><b id="closeExpenses">0,00</b></div>
+      <div class="card"><span>Ganancia tras gastos</span><b id="closeNet">0,00</b></div>
     </div>
   </div>
-  <div class="panel"><h2>Resultado por moneda</h2><p>Evita mezclar CUP, USD y transferencias.</p><div class="table-wrap"><table style="min-width:600px"><thead><tr><th>Moneda</th><th>Vendido</th><th>Comprado</th><th>Coste vendido</th><th>Ganancia</th></tr></thead><tbody id="closeCurrencyBody"></tbody></table></div></div>
+  <div class="panel"><h2>Resultado por moneda</h2><p>Evita mezclar CUP, USD y transferencias.</p><div class="table-wrap"><table style="min-width:760px"><thead><tr><th>Moneda</th><th>Vendido</th><th>Comprado</th><th>Coste vendido</th><th>Ganancia de ventas</th><th>Gastos</th><th>Tras gastos</th></tr></thead><tbody id="closeCurrencyBody"></tbody></table></div></div>
   <div class="panel"><h2>Detalle por producto</h2><p>Compras y ventas del mes.</p>
     <div class="table-wrap"><table>
       <thead><tr><th>Código</th><th>Producto</th><th>Comprado</th><th>Inversión</th><th>Vendido</th><th>Ventas</th><th>Coste</th><th>Ganancia</th><th>% ganancia</th></tr></thead>
@@ -355,7 +374,7 @@ input:focus,select:focus{border-color:var(--accent);box-shadow:0 0 0 3px #fd7702
     <label class="span2">Nota<input id="expNote" maxlength="200" placeholder="Opcional"></label>
     <div style="grid-column:1/-1"><button class="btn primary" type="submit">Guardar gasto</button></div>
   </form></div>
-  <div class="panel"><h2>Gastos registrados</h2><div class="table-wrap"><table style="min-width:640px"><thead><tr><th>Fecha</th><th>Categoría</th><th>Moneda</th><th>Monto</th><th>Nota</th><th></th></tr></thead><tbody id="expBody"></tbody></table></div></div>
+  <div class="panel"><div class="head"><div><h2>Gastos registrados</h2><p>Ordenados por mes, con el total de cada mes.</p></div><div class="filters"><input id="expSearch" class="search" placeholder="Buscar"><input id="expMonth" type="month"></div></div><div class="table-wrap"><table style="min-width:640px"><thead><tr><th>Fecha</th><th>Categoría</th><th>Moneda</th><th>Monto</th><th>Nota</th><th></th></tr></thead><tbody id="expBody"></tbody></table></div></div>
 </section>
 <section id="view-clientes" class="view"><div class="panel"><h2>Clientes</h2><p>Se arma sola con el campo «Cliente» de tus ventas.</p><div class="table-wrap"><table style="min-width:680px"><thead><tr><th>Cliente</th><th>Ventas</th><th>Total comprado</th><th>Pendiente</th><th></th></tr></thead><tbody id="custBody"></tbody></table></div></div></section>
 <section id="view-conteo" class="view"><div class="panel"><h2>Conteo físico</h2><p>Escribe lo que realmente cuentas. Al aplicar, el stock se ajusta y queda registrado.</p><div class="table-wrap"><table style="min-width:620px"><thead><tr><th>Código</th><th>Producto</th><th>Sistema</th><th>Contado</th><th>Diferencia</th></tr></thead><tbody id="countBody"></tbody></table></div><div style="margin-top:12px"><button id="countApply" class="btn primary" type="button">Aplicar ajustes</button></div></div><div class="panel"><h2>Ajustes recientes</h2><div id="adjList" class="empty">Sin ajustes.</div></div></section>
@@ -882,8 +901,23 @@ function renderCharts(){
   $("netKpis").innerHTML=r?kp.map(([a,b])=>`<div class="card"><span>${a}</span><b>${formatMoney(b)}</b></div>`).join(""):need;
 }
 function renderExpenses(){
-  const rows=db.expenses.slice().sort((a,b)=>b.date.localeCompare(a.date)||b.created-a.created);
-  $("expBody").innerHTML=rows.length?rows.map(e=>`<tr><td>${formatDate(e.date)}</td><td>${escapeHtml(e.category)}</td><td>${escapeHtml(e.currency)}</td><td>${formatMoney(e.amount)}</td><td class="note">${escapeHtml(e.note)}</td><td><button class="btn secondary" onclick="delExpense('${e.id}')">Eliminar</button></td></tr>`).join(""):emptyRow(6,"No hay gastos.");
+  const q=clean($("expSearch").value).toLowerCase(),month=$("expMonth").value;
+  const rows=db.expenses.slice().sort((a,b)=>b.date.localeCompare(a.date)||b.created-a.created).filter(e=>{
+    const text=`${e.category} ${e.currency} ${e.note}`.toLowerCase();
+    return (!q||text.includes(q))&&monthMatches(e.date,month);
+  });
+  let html="",current="";
+  rows.forEach(e=>{
+    const k=(e.date||"").slice(0,7);
+    if(k!==current){
+      current=k;
+      const tot={};rows.filter(x=>(x.date||"").slice(0,7)===k).forEach(x=>{tot[x.currency]=round2((tot[x.currency]||0)+num(x.amount))});
+      const [y,m]=k.split("-"),name=MESES_LARGO[+m-1]||k;
+      html+=`<tr><td colspan="6" style="background:#fff3e3;font-weight:800;color:#7a3a00">${name.charAt(0).toUpperCase()+name.slice(1)} ${y} · ${Object.entries(tot).map(([c,v])=>formatMoney(v)+" "+curShort(c)).join(" · ")}</td></tr>`;
+    }
+    html+=`<tr><td>${formatDate(e.date)}</td><td>${escapeHtml(e.category)}</td><td>${escapeHtml(e.currency)}</td><td>${formatMoney(e.amount)}</td><td class="note">${escapeHtml(e.note)}</td><td><button class="btn secondary" onclick="delExpense('${e.id}')">Eliminar</button></td></tr>`;
+  });
+  $("expBody").innerHTML=rows.length?html:emptyRow(6,"No hay gastos.");
 }
 window.delExpense=async id=>{if(!confirm("¿Eliminar este gasto?"))return;db.expenses=db.expenses.filter(e=>e.id!==id);await saveDatabase();renderAll()};
 function renderCustomers(){
@@ -914,9 +948,13 @@ function renderClose(){
   $("closeProfit").textContent=formatMoney(profit);
   $("closeProfitPercent").textContent=formatPercent(profitPercent);
   $("closeUnits").textContent=formatNumber(sales.reduce((s,x)=>s+num(x.qty),0));
+  const monthExp=(db.expenses||[]).filter(x=>monthMatches(x.date,month)),totalExp=round2(monthExp.reduce((s,x)=>s+num(x.amount),0));
+  $("closeExpenses").textContent=formatMoney(totalExp);
+  $("closeNet").textContent=formatMoney(round2(profit-totalExp));
+  $("closeNet").classList.toggle("negative",profit-totalExp<0);
   $("closeCurrencyBody").innerHTML=["CUP CASH","USD CASH","TRANSFERENCIA"].map(c=>{
-    const ss=sales.filter(x=>x.currency===c),pp=purchases.filter(x=>x.currency===c),g=round2(ss.reduce((s,x)=>s+num(x.profit),0));
-    return `<tr><td><b>${c}</b></td><td>${formatMoney(ss.reduce((s,x)=>s+num(x.total),0))}</td><td>${formatMoney(pp.reduce((s,x)=>s+num(x.total),0))}</td><td>${formatMoney(ss.reduce((s,x)=>s+num(x.costTotal),0))}</td><td class="${g<0?"negative":""}"><b>${formatMoney(g)}</b></td></tr>`;
+    const ss=sales.filter(x=>x.currency===c),pp=purchases.filter(x=>x.currency===c),g=round2(ss.reduce((s,x)=>s+num(x.profit),0)),ex=round2(monthExp.filter(x=>x.currency===c).reduce((s,x)=>s+num(x.amount),0));
+    return `<tr><td><b>${c}</b></td><td>${formatMoney(ss.reduce((s,x)=>s+num(x.total),0))}</td><td>${formatMoney(pp.reduce((s,x)=>s+num(x.total),0))}</td><td>${formatMoney(ss.reduce((s,x)=>s+num(x.costTotal),0))}</td><td class="${g<0?"negative":""}"><b>${formatMoney(g)}</b></td><td>${formatMoney(ex)}</td><td class="${g-ex<0?"negative":""}"><b>${formatMoney(round2(g-ex))}</b></td></tr>`;
   }).join("");
 
   const rows=orderedProducts().map(p=>{
@@ -1213,6 +1251,7 @@ $("cancelWalletEdit").onclick=resetWalletForm;
 ["purchaseSearch","purchaseMonth"].forEach(id=>$(id).addEventListener("input",renderPurchases));
 ["saleSearch","saleMonth"].forEach(id=>$(id).addEventListener("input",renderSales));
 $("lotSearch").addEventListener("input",renderLots);
+["expSearch","expMonth"].forEach(id=>$(id).addEventListener("input",renderExpenses));
 ["walletSearch","walletMonth"].forEach(id=>$(id).addEventListener("input",renderWallet));
 $("closeMonth").addEventListener("input",renderClose);
 ["debtSearch","debtShowAll"].forEach(id=>{$(id).addEventListener("input",renderDebts);$(id).addEventListener("change",renderDebts)});
@@ -1412,14 +1451,14 @@ $("flowCur").addEventListener("change",renderMoneyFlow);
 
 /* ===== GANANCIA DEL AÑO ===== */
 const yearColor=m=>`hsl(${32-m*1.3},95%,${74-m*3.7}%)`;
-function yearProfit(cur,year){
+function yearProfit(cur,year,mode){
   const all=cur==="ALL",conv=(a,c)=>all?toCUP(a,c):num(a),rows=[];
   for(let m=0;m<12;m++){
     const k=`${year}-${pad(m+1)}`;
     const ss=db.sales.filter(x=>(x.date||"").startsWith(k)&&(all||x.currency===cur));
     const ee=(db.expenses||[]).filter(x=>(x.date||"").startsWith(k)&&(all||x.currency===cur));
     const gross=round2(ss.reduce((t,x)=>t+conv(x.profit,x.currency),0)),exp=round2(ee.reduce((t,x)=>t+conv(x.amount,x.currency),0));
-    rows.push({m,l:MESES[m],full:MESES_LARGO[m],gross,exp,net:round2(gross-exp),has:ss.length>0||ee.length>0});
+    rows.push({m,l:MESES[m],full:MESES_LARGO[m],gross,exp,net:round2(mode==="net"?gross-exp:gross),has:ss.length>0||ee.length>0});
   }
   return rows;
 }
@@ -1448,7 +1487,7 @@ function renderYearProfit(){
     $("yearProfSummary").textContent="Para ver todas las monedas juntas, escribe la tasa de cambio (CUP por 1 USD) en el panel «Resultado del mes» de más abajo. O elige una sola moneda arriba.";
     $("yearProfDonut").innerHTML="";$("yearProfTiles").innerHTML="";return;
   }
-  const rows=yearProfit(cur,year),total=round2(rows.reduce((t,r)=>t+r.net,0)),withData=rows.filter(r=>r.has);
+  const mode=$("yearProfMode").value,rows=yearProfit(cur,year,mode),total=round2(rows.reduce((t,r)=>t+r.net,0)),withData=rows.filter(r=>r.has);
   if(!withData.length){
     $("yearProfSummary").textContent=`Aún no hay ventas ni gastos en ${year} para esta moneda. Cuando registres ventas, aquí verás tu año completo.`;
     $("yearProfDonut").innerHTML=donutSVG(rows,0,year,unit);
@@ -1457,7 +1496,7 @@ function renderYearProfit(){
   const best=withData.reduce((a,b)=>b.net>a.net?b:a),losses=withData.filter(r=>r.net<0).length,isNow=year===nowY;
   $("yearProfSummary").innerHTML=`En ${year} ${isNow?"llevas":"ganaste"} <b style="color:${total<0?"var(--bad)":"var(--ok)"}">${formatMoney(total)} ${unit}</b>. `+
     (best.net>0?`Tu mejor mes ${isNow?"es":"fue"} <b>${best.full}</b> con ${formatMoney(best.net)}.`:`Ningún mes ha dejado ganancia todavía.`)+
-    (losses?` ${losses} ${losses===1?"mes cerró":"meses cerraron"} en pérdida.`:"");
+    (losses?` ${losses} ${losses===1?"mes cerró":"meses cerraron"} en pérdida.`:"")+` <span style="font-weight:500;color:var(--muted)">(${mode==="net"?"después de gastos":"ganancia de ventas, igual que en el Cierre mensual"})</span>`;
   $("yearProfDonut").innerHTML=donutSVG(rows,total,year,unit);
   const maxPos=Math.max(0,...rows.map(r=>r.net)),sumPos=rows.filter(r=>r.net>0).reduce((t,r)=>t+r.net,0);
   $("yearProfTiles").innerHTML=rows.map(r=>{
@@ -1469,7 +1508,24 @@ function renderYearProfit(){
       <small>${r.net>0&&sumPos?(isBest?"mejor mes · ":"")+Math.round(r.net/sumPos*100)+" % del total":r.net<0?"pérdida":"sin ganancia"}</small></div>`;
   }).join("");
 }
-["yearProfCur","yearProfYear"].forEach(id=>$(id).addEventListener("change",renderYearProfit));
+["yearProfCur","yearProfYear","yearProfMode"].forEach(id=>$(id).addEventListener("change",renderYearProfit));
+
+/* ===== TAMAÑO DE PANTALLA ===== */
+const ZOOMS=[60,70,80,90,100,110,120];
+let curZoom=100;
+function applyZoom(v){
+  curZoom=v;document.body.style.zoom=v/100;$("zoomVal").textContent=v+" %";
+  $("zoomOut").disabled=v<=ZOOMS[0];$("zoomIn").disabled=v>=ZOOMS[ZOOMS.length-1];
+  try{localStorage.setItem("ci_zoom",String(v))}catch(_){}
+}
+function initZoom(){
+  let v=0;try{v=+localStorage.getItem("ci_zoom")||0}catch(_){}
+  if(!ZOOMS.includes(v))v=innerWidth<=780?90:100;
+  applyZoom(v);
+}
+$("zoomOut").onclick=()=>applyZoom(ZOOMS[Math.max(0,ZOOMS.indexOf(curZoom)-1)]);
+$("zoomIn").onclick=()=>applyZoom(ZOOMS[Math.min(ZOOMS.length-1,ZOOMS.indexOf(curZoom)+1)]);
+initZoom();
 
 async function startApp(){
   try{
